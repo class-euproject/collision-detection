@@ -5,13 +5,13 @@ init()
 from CityNS.classes import *
 
 class DataclayObjectManager:
-    eventsDC = None
+    objectsDKB = None
     
     def __init__(self, alias):
-        self.eventsDC = EventsSnapshot.get_by_alias(alias)
+        self.objectsDKB = DKB.get_by_alias(alias) # to check
 
     def getObjects(self, limit=None):
-        objects = self.eventsDC.get_objects_from_dkb()
+        objects = self.objectsDKB.get_objects_from_dkb() # to check
 
         if limit:  #TODO: to be removed. needed for debugging
             return objects[:limit]

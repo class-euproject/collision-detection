@@ -5,7 +5,7 @@ import time
 
 if __name__ == '__main__':
     
-    dm = DataclayObjectManager(alias="GEIC")
+    dm = DataclayObjectManager(alias="GEIC") # to check
 
     while True: # infinite loop
 

@@ -31,7 +31,14 @@ warnings.simplefilter('ignore', np.RankWarning)
 
 COLLISION_THRESHOLD = 2 # max distance in seconds to alert a collision
 
-    
+
+def transformObjectFromFile(input_object):
+    v_id = input_object["v_id"]
+    x = input_object["x"]
+    y = input_object["y"]
+    t = input_object["t"]
+    return (v_id,x,y,t)
+
 def get_fxy_fxt(x,y,t):
     fxy = np.polyfit(x, y, 2) # The 2 signifies a polynomial of degree 2
     fxt = np.polyfit(x, t, 2) # The 2 signifies a polynomial of degree 2
@@ -39,10 +46,10 @@ def get_fxy_fxt(x,y,t):
 
 
 def get_vehicle_functions(input_object):
-    v_id = input_object["v_id"]
-    x = input_object["x"]
-    y = input_object["y"]
-    t = input_object["t"]
+    v_id = input_object[0]
+    x = input_object[1]
+    y = input_object[2]
+    t = input_object[3]
     vehicle,vehicle_t = get_fxy_fxt(x, y, t)
     return (v_id,vehicle,vehicle_t)
 
@@ -167,7 +174,7 @@ def collision_detection(main_obj, other_obj):
     
     #print("Calculating collisions for "+main_object[0] +" and "+other_object[0])
 
-    x = generate_common_x(main_obj["x"])
+    x = generate_common_x(main_obj[1])
 
     f = []
     for xx in x: 

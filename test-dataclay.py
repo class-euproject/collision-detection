@@ -5,7 +5,7 @@ import time
 
 if __name__ == '__main__':
     
-    dm = DataclayObjectManager(alias="GEIC") # to check
+    dm = DataclayObjectManager(alias="DKB") # alias for DKB objects
 
     while True: # infinite loop
 

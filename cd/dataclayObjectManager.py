@@ -8,10 +8,10 @@ class DataclayObjectManager:
     objectsDKB = None
     
     def __init__(self, alias):
-        self.objectsDKB = DKB.get_by_alias(alias) # to check
+        self.objectsDKB = DKB.get_by_alias(alias)
 
     def getObjects(self, limit=None):
-        objects = self.objectsDKB.get_objects_from_dkb() # to check
+        objects = self.objectsDKB.get_objects_from_dkb()
 
         if limit:  #TODO: to be removed. needed for debugging
             return objects[:limit]

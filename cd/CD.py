@@ -168,25 +168,32 @@ def intersections_linear_interpolation(x,f,g,main_object,other_object):
 
 
 def collision_detection(main_obj, other_obj):
+
+    # check if x, y and t are not empty
+    if main_obj[1] and main_obj[2] and main_obj[3] and other_obj[1] and other_obj[2] and other_obj[3]:
+        
+        main_object = get_vehicle_functions(main_obj)
+        other_object = get_vehicle_functions(other_obj)
     
-    main_object = get_vehicle_functions(main_obj)
-    other_object = get_vehicle_functions(other_obj)
-    
-    #print("Calculating collisions for "+main_object[0] +" and "+other_object[0])
+        #print("Calculating collisions for "+main_object[0] +" and "+other_object[0])
 
-    x = generate_common_x(main_obj[1])
+        x = generate_common_x(main_obj[1])
 
-    f = []
-    for xx in x: 
-        f.append(get_f(xx,main_object[1][0],main_object[1][1],main_object[1][2]))
+        f = []
+        for xx in x: 
+            f.append(get_f(xx,main_object[1][0],main_object[1][1],main_object[1][2]))
 
-    g = []
-    for xx in x: 
-        g.append(get_f(xx,other_object[1][0],other_object[1][1],other_object[1][2]))
+        g = []
+        for xx in x: 
+            g.append(get_f(xx,other_object[1][0],other_object[1][1],other_object[1][2]))
 
 
-    collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object)
-    #collisions = intersections_linear_interpolation(x,f,g,main_object,other_object)
+        collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object)
+        #collisions = intersections_linear_interpolation(x,f,g,main_object,other_object)
 
+    else:
+        collisions = []
+        #print("empty")
+        
     return collisions
 

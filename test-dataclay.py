@@ -1,6 +1,7 @@
 from cd.CD import collision_detection
 from cd.dataclayObjectManager import DataclayObjectManager
 
+import random
 import time 
 
 if __name__ == '__main__':
@@ -28,7 +29,8 @@ if __name__ == '__main__':
 
 
         ###### All Vs All ######
-        for i in range(len(input_objects)):
+        random_list = random.sample(range(len(input_objects)), len(input_objects))
+        for i in random_list:
             actual_objects = input_objects
 
             main_object = actual_objects[i]

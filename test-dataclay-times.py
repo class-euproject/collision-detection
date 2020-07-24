@@ -81,8 +81,9 @@ if __name__ == '__main__':
 
         print("\n\nStarting time reporting\n\n")
         print("Global time (loop): " + str(end_time - start_time))
+        print("Total objects: " + str(len(input_objects)))
         print("dataclay time (getObjects): " + str(dataclay_end_time - start_time))
-        print("Collision detection global time (all objects): " + str(end_collision_time - start_collision_time))
+        print("Collision detection global time (all objects): " + str(sum(collision_time)))
         print("Total collisions detections analyzed: " + str(collision_count + collision_empty))
         print("Total collisions detections analyzed (without empty trajectories): " + str(collision_count))
         if len(collision_detection_time)>0:

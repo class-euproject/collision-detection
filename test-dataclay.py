@@ -39,13 +39,15 @@ if __name__ == '__main__':
             other_objects.pop(i)
 
             for other_object in other_objects:
-                collisions = collision_detection(main_object,other_object)
 
-                #if not collisions:
-                #    print("No collisions detected")
-                if collisions:
-                    for collision in collisions:
-                        dm.alertCollision(main_object[0], other_object[0], collision)
+                if main_object[1] and main_object[2] and main_object[3] and other_object[1] and other_object[2] and other_object[3] and min(main_object[1])>-180 and max(main_object[1])<180 and min(other_object[1])>-180 and max(other_object[1])<180 and min(main_object[2])>-90 and min(other_object[2])>-90 and max(main_object[1])<90 and max(other_object[2])<90:
+                    collisions = collision_detection(main_object,other_object)
+
+                    #if not collisions:
+                    #    print("No collisions detected")
+                    if collisions:
+                        for collision in collisions:
+                            dm.alertCollision(main_object[0], other_object[0], collision)
 
 
         print("\n\nEnded collision detection\n\n")

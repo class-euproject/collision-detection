@@ -40,7 +40,7 @@ if __name__ == '__main__':
 
             for other_object in other_objects:
 
-                if main_object[1] and main_object[2] and main_object[3] and other_object[1] and other_object[2] and other_object[3] and min(main_object[1])>-180 and max(main_object[1])<180 and min(other_object[1])>-180 and max(other_object[1])<180 and min(main_object[2])>-90 and min(other_object[2])>-90 and max(main_object[1])<90 and max(other_object[2])<90:
+                if main_object[1] and main_object[2] and main_object[3] and other_object[1] and other_object[2] and other_object[3] and min(main_object[1])>-180 and max(main_object[1])<180 and min(other_object[1])>-180 and max(other_object[1])<180 and min(main_object[2])>-90 and min(other_object[2])>-90 and max(main_object[1])<90 and max(other_object[2])<90 and (max(main_object[1])-min(main_object[1]))<2 and (max(main_object[2])-min(main_object[2]))<2 and (max(other_object[1])-min(other_object[1]))<2 and (max(other_object[2])-min(other_object[2]))<2:
                     collisions = collision_detection(main_object,other_object)
 
                     #if not collisions:

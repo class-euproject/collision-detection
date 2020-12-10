@@ -1,5 +1,4 @@
 from dataclay.api import init, finish
-from collections import deque
 
 import os 
 import time
@@ -8,15 +7,12 @@ init()
 
 from CityNS.classes import *
 
-import pywren_ibm_cloud as pywren
+import lithops
 
 from cd.dataclayObjectManager import DataclayObjectManager
 from cd.CD import collision_detection
 
 from geolib import geohash
-import random
-
-import time
 
 # needed for debugging
 BEGIN = time.time()
@@ -28,10 +24,6 @@ def timeConsumed(name):
     start = time.time()
 ##############
 
-
-
-
-# TODO:
 # either return from dataclay only relevant data (to optimize times)
 # or move this filtering logic down to cd.CD.collision_detection()
 def _is_collided(main_object, other_object):
@@ -42,27 +34,26 @@ def _is_collided(main_object, other_object):
         print("after collision_detection(main_object,other_object)")
     return res
 
-# TODO: delete this method, all_objects object should actually contain connected cars only
 def _getConnectedCarsInWA(my_object, connected_cars_objects):
     res = []
-    for cc in random.choices(connected_cars_objects, k=5): #TODO: currently dummy limit of MAX 5 random vehicles
+    for cc in connected_cars_objects:
         if my_object[4] == cc[4] or my_object[4] in geohash.neighbours(cc[4]):
+            print("my_object[4] == cc[4] {}, my_object[4] in geohash.neighbours(cc[4]) {}".format(my_object[4] == cc[4], my_object[4] in geohash.neighbours(cc[4])))
             res.append(cc)
     return res
 
 # should it be called from pywren map or just a single OW function?!
 # how the result should be processed?
-def detect_collision(my_object, all_objects):
-    print("in detect_collision with: {} and cc_in_wa {}".format(my_object, all_objects))
-
-    cc_in_wa = _getConnectedCarsInWA(my_object, all_objects)
+def detect_collision(my_object, connected_cars):
+    cc_in_wa = _getConnectedCarsInWA(my_object, connected_cars)
 
     res = []
     for cc in cc_in_wa:
         if _is_collided(my_object, cc):
             print(">>> Collision with connected car {} detected".format(cc[0]))
+            # here will be push to car mqtt topic
             if cc[0] not in res:
-                res.append(cc[0])
+                res.append((my_object[0], cc[0]))
 
     return res
 
@@ -70,8 +61,8 @@ def run(params=[]):
 
     timeConsumed("start")   #TODO: to be removed. needed for debugging
 
-    pw = pywren.function_executor()
-    timeConsumed("pw_executor")   #TODO: to be removed. needed for debugging
+    fexec = lithops.FunctionExecutor()
+    timeConsumed("executor")   #TODO: to be removed. needed for debugging
     if 'ALIAS' not in params:  #TODO: to be removed. needed for debugging
         print("Params %s missing ALIAS parameter" % params)
         exit()
@@ -82,24 +73,45 @@ def run(params=[]):
     dm = DataclayObjectManager(alias=alias)
     timeConsumed("DataclayVehicleManager")   #TODO: to be removed. needed for debugging
 
-    if 'LIMIT' in params:  #TODO: to be removed. needed for debugging
+    limit = None
+    if 'LIMIT' in params and params['LIMIT'] != None:  #TODO: to be removed. needed for debugging
         limit = int(params['LIMIT'])  #TODO: to be removed. needed for debugging
 
-    objects = dm.getObjects(limit)
+    objects = dm.getAllObjects(with_tp=True)
+    timeConsumed("dm.getAllObjects")
+
+#    import pdb;pdb.set_trace()
+    ids = []
+    for obj in objects:
+        ids.append(obj.id_object)
+    timeConsumed("ids.append")
+
+    objects = dm.covertObjectsWithTpToTuples(objects, limit=limit)
+    timeConsumed("dm.covertObjectsWithTpToTuples")
+
+#    connected_cars = dm.getObjectTuplesWithTp(with_tp=True, connected=True)
+    connected_cars = objects
+
+    timeConsumed("connected_cars = dm.getObjectTuplesWithTp")
+
     kwargs = []
     for obj in objects:
         kwargs.append({'my_object': obj})
 
-    pw.map(detect_collision, kwargs, extra_args={'all_objects': objects})
-    timeConsumed("pw.map")
+    timeConsumed("kwargs.append")
 
-    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
-    timeConsumed("pw.wait")
+    fexec.map(detect_collision, kwargs, extra_args={'connected_cars': connected_cars}, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
+    timeConsumed("fexec.map")
+
+#    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
+    res = fexec.get_result(WAIT_DUR_SEC=0.015)
+    print("results: {}".format(res))
+    timeConsumed("fexec.wait")
 
     return {"finished": "true"}
 
 if __name__ == '__main__':
-    limit = 1
+    limit = None
     if len(sys.argv) > 1:
         limit = sys.argv[1]
     run(params={"LIMIT": limit, "ALIAS" : "DKB"})

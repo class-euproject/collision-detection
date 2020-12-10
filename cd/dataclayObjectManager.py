@@ -13,25 +13,40 @@ class DataclayObjectManager:
     def __init__(self, alias):
         self.objectsDKB = DKB.get_by_alias(alias)
 
-    # TODO: delete it once geohash making it inside dataclay object model
-    def _add_geohash(self, objectTuple):
-        obj = Object.get_by_alias(str(objectTuple[0]))
-        history = obj.get_events_history()
-        last_long = history[0][len(history[0]) - 1]
-        last_lat = history[1][len(history[1]) - 1]
-        object_geohash = geohash.encode(last_lat, last_long, PRECISION)
-        return objectTuple + (object_geohash, )
+#    def getObjectsRefs(self, limit=None):
+#        # get latest snapshot
+#        latestEventSnapshotID = len(self.objectsDKB.kb) - 1
+#        if latestEventSnapshotID >= 0:
+#            return self.objectsDKB.kb[latestEventSnapshotID].objects_refs[:limit]
+#        return []
 
-    def getObjects(self, limit=None):
-        _objects = self.objectsDKB.get_objects_from_dkb()
-        objects = []
-        for obj in _objects:
-            objects.append(self._add_geohash(obj))
+    def getObjectTuplesWithTp(self, with_tp=False, connected=False, limit=None):
+        objects = self.objectsDKB.get_objects([], False, with_tp, connected)
+        res = []
+        for obj in objects:
+            res.append((str(obj.id_object), obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt, obj.geohash))  
+            if limit and len(res) == limit:
+                return res
+        return res
 
-        if limit:  #TODO: to be removed. needed for debugging
-            return objects[:limit]
+    def getAllObjects(self, with_tp=False, connected=False):
+        return self.objectsDKB.get_objects([], False, with_tp, connected)
 
-        return objects
+    def covertObjectsWithTpToTuples(self, objects, limit=None):
+        res = []
+        for obj in objects:
+            res.append((str(obj.id_object), obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt, obj.geohash))
+            if limit and len(res) == limit:
+                return res
+        return res
+            
+    def foo(self, objects_refs):
+        res = []
+        for obj_ref in objects_refs:
+            obj = Object.get_by_alias(str(obj_ref))
+            if obj.trajectory_px:
+                res.append((str(obj_ref), obj.trajectory_px, obj.trajectory_py, obj.trajectory_pt, obj.geohash))
+        return res
 
     def alertCollision(self, v_main, v_other, col):
         print(f"----------------------------------------")

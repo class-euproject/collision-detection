@@ -13,6 +13,7 @@ from cd.dataclayObjectManager import DataclayObjectManager
 from cd.CD import collision_detection
 
 from geolib import geohash
+import paho.mqtt.client as mqtt
 
 # needed for debugging
 BEGIN = time.time()
@@ -51,6 +52,10 @@ def detect_collision(my_object, connected_cars):
     for cc in cc_in_wa:
         if _is_collided(my_object, cc):
             print(">>> Collision with connected car {} detected".format(cc[0]))
+            client=mqtt.Client()
+            client.connect("192.168.12.2")
+            client.publish("test","Collision of {} with connected car {} detected".format(my_object[0], cc[0]))
+
             # here will be push to car mqtt topic
             if cc[0] not in res:
                 res.append((my_object[0], cc[0]))
@@ -77,19 +82,9 @@ def run(params=[]):
     if 'LIMIT' in params and params['LIMIT'] != None:  #TODO: to be removed. needed for debugging
         limit = int(params['LIMIT'])  #TODO: to be removed. needed for debugging
 
-    objects = dm.getAllObjects(with_tp=True)
+    objects = dm.getAllObjects(with_tp=True, with_event_history=False)
     timeConsumed("dm.getAllObjects")
 
-#    import pdb;pdb.set_trace()
-    ids = []
-    for obj in objects:
-        ids.append(obj.id_object)
-    timeConsumed("ids.append")
-
-    objects = dm.covertObjectsWithTpToTuples(objects, limit=limit)
-    timeConsumed("dm.covertObjectsWithTpToTuples")
-
-#    connected_cars = dm.getObjectTuplesWithTp(with_tp=True, connected=True)
     connected_cars = objects
 
     timeConsumed("connected_cars = dm.getObjectTuplesWithTp")

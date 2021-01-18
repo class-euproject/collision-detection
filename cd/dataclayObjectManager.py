@@ -5,13 +5,17 @@ init()
 from CityNS.classes import *
 
 from geolib import geohash
-PRECISION = 7
+
+from dataclay import getRuntime
+from dataclay.api import get_backend_id_by_name
+
 
 class DataclayObjectManager:
     objectsDKB = None
     
     def __init__(self, alias):
         self.objectsDKB = DKB.get_by_alias(alias)
+        self.backend_id = get_backend_id_by_name("DS1")
 
     def getAllObjects(self, with_tp=False, connected=False, with_event_history=True):
         objects = self.objectsDKB.get_objects([], False, with_tp, connected)
@@ -22,6 +26,12 @@ class DataclayObjectManager:
             for obj in objects:
                 res.append(obj[:5])
             return res
+
+    def getObject(self, oid):
+        obj_id, class_id = oid.split(":")
+        obj_id = uuid.UUID(obj_id)
+        class_id = uuid.UUID(class_id)
+        return getRuntime().get_object_by_id(obj_id, hint=self.backend_id, class_id=class_id)
 
     def alertCollision(self, v_main, v_other, col):
         print(f"----------------------------------------")

@@ -1,5 +1,5 @@
 import sys
-from lithopsRunner import run
+from cdLithopsRunner import run
 
 def main(params):
     return run(params)

@@ -45,11 +45,12 @@ def _getConnectedCarsInWA(my_object, connected_cars_objects):
 
 # should it be called from pywren map or just a single OW function?!
 # how the result should be processed?
-def detect_collision(my_object, connected_cars):
-    cc_in_wa = _getConnectedCarsInWA(my_object, connected_cars)
-
+def detect_collision(objects_chunk, connected_cars):
     res = []
-    for cc in cc_in_wa:
+    for my_object in objects_chunk:
+      cc_in_wa = _getConnectedCarsInWA(my_object, connected_cars)
+
+      for cc in cc_in_wa:
         if _is_collided(my_object, cc):
             print(">>> Collision with connected car {} detected".format(cc[0]))
             client=mqtt.Client()
@@ -89,6 +90,10 @@ def run(params=[]):
     if 'LIMIT' in params and params['LIMIT'] != None:  #TODO: to be removed. needed for debugging
         limit = int(params['LIMIT'])  #TODO: to be removed. needed for debugging
 
+    chunk_size = 1
+    if 'CHUNK_SIZE' in params and params['CHUNK_SIZE'] != None:
+        chunk_size =  int(params['CHUNK_SIZE'])
+
     objects = dm.getAllObjects(with_tp=True, with_event_history=False)
     timeConsumed("dm.getAllObjects")
 
@@ -103,18 +108,28 @@ def run(params=[]):
     '''
     #####################
 
+    def select_connected_cars(objects):
+        CONNECTED_CARS = ['obj_10_132','obj_10_105','obj_10_151','obj_10_150', 'obj_10_28','obj_10_13','','']
+        res = []
+        for obj in objects:
+            if dm.getObject(obj[0]).id_object in CONNECTED_CARS:
+                res.append(obj)
+        return res
 
-    connected_cars = objects
+    def chunker(seq, size):
+        return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
+    connected_cars = select_connected_cars(objects)#objects
     timeConsumed("connected_cars = dm.getObjectTuplesWithTp")
 
     kwargs = []
-    for obj in objects:
-        kwargs.append({'my_object': obj})
+
+    for objects_chunk in chunker(objects, chunk_size):
+        kwargs.append({'objects_chunk': objects_chunk, 'connected_cars': connected_cars})
 
     timeConsumed("kwargs.append")
 
-    fexec.map(detect_collision, kwargs, extra_args={'connected_cars': connected_cars}, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
+    fexec.map(detect_collision, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
     timeConsumed("fexec.map")
 
 #    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
@@ -126,6 +141,9 @@ def run(params=[]):
 
 if __name__ == '__main__':
     limit = None
+    chunk_size = 1
     if len(sys.argv) > 1:
-        limit = sys.argv[1]
-    run(params={"LIMIT": limit, "ALIAS" : "DKB"})
+        chunk_size = sys.argv[1]
+    if len(sys.argv) > 2:
+        limit = sys.argv[2]
+    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB"})

@@ -5,33 +5,33 @@ init()
 from CityNS.classes import *
 
 from geolib import geohash
-PRECISION = 7
+
+from dataclay import getRuntime
+from dataclay.api import get_backend_id_by_name
+
 
 class DataclayObjectManager:
     objectsDKB = None
     
     def __init__(self, alias):
         self.objectsDKB = DKB.get_by_alias(alias)
+        self.backend_id = get_backend_id_by_name("DS1")
 
-    # TODO: delete it once geohash making it inside dataclay object model
-    def _add_geohash(self, objectTuple):
-        obj = Object.get_by_alias(str(objectTuple[0]))
-        history = obj.get_events_history()
-        last_long = history[0][len(history[0]) - 1]
-        last_lat = history[1][len(history[1]) - 1]
-        object_geohash = geohash.encode(last_lat, last_long, PRECISION)
-        return objectTuple + (object_geohash, )
+    def getAllObjects(self, with_tp=False, connected=False, with_event_history=True):
+        objects = self.objectsDKB.get_objects([], False, with_tp, connected)
+        if with_event_history:
+            return objects
+        else:
+            res = []
+            for obj in objects:
+                res.append(obj[:5])
+            return res
 
-    def getObjects(self, limit=None):
-        _objects = self.objectsDKB.get_objects_from_dkb()
-        objects = []
-        for obj in _objects:
-            objects.append(self._add_geohash(obj))
-
-        if limit:  #TODO: to be removed. needed for debugging
-            return objects[:limit]
-
-        return objects
+    def getObject(self, oid):
+        obj_id, class_id = oid.split(":")
+        obj_id = uuid.UUID(obj_id)
+        class_id = uuid.UUID(class_id)
+        return getRuntime().get_object_by_id(obj_id, hint=self.backend_id, class_id=class_id)
 
     def alertCollision(self, v_main, v_other, col):
         print(f"----------------------------------------")

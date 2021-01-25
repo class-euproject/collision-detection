@@ -82,7 +82,7 @@ def intersections_no_linear_interpolation(x,f,g,main_object,other_object):
         #print("    tdiff (seconds): "+str(tdiff))
 
         # check if timestamp is after first object timestamp
-        if (tv1 < main_object[3][3][0]):
+        if (tv1 >= main_object[3][3][0]):
             if (tdiff < COLLISION_THRESHOLD):
             #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
                 collisions.append((x[int(sol)],f[int(sol)],tv1))
@@ -162,7 +162,7 @@ def intersections_linear_interpolation(x,f,g,main_object,other_object):
         #print("    tdiff (seconds): "+str(tdiff))
 
         # check if timestamp is after first object timestamp
-        if (tv1 < main_object[3][3][0]):
+        if (tv1 >= main_object[3][3][0]):
             if (tdiff < COLLISION_THRESHOLD):
             #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
                 collisions.append((x[int(xc)],f[int(xc)],tv1))

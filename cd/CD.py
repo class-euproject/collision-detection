@@ -51,7 +51,7 @@ def get_vehicle_functions(input_object):
     y = input_object[2]
     t = input_object[3]
     vehicle,vehicle_t = get_fxy_fxt(x, y, t)
-    return (v_id,vehicle,vehicle_t)
+    return (v_id,vehicle,vehicle_t,input_object)
 
 
 def generate_common_x(x1):
@@ -80,11 +80,14 @@ def intersections_no_linear_interpolation(x,f,g,main_object,other_object):
         #print("  tv2: "+str(tv2))
         tdiff = abs(tv1/1000 - tv2/1000)
         #print("    tdiff (seconds): "+str(tdiff))
-        if (tdiff < COLLISION_THRESHOLD):
-        #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
-            collisions.append((x[int(sol)],f[int(sol)],tv1))
-        #else:
-        #    print("    trayectories do not crossed in the same time")
+
+        # check if timestamp is after first object timestamp
+        if (tv1 < main_object[3][3][0]):
+            if (tdiff < COLLISION_THRESHOLD):
+            #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
+                collisions.append((x[int(sol)],f[int(sol)],tv1))
+            #else:
+            #    print("    trayectories do not crossed in the same time")
         
         return collisions
 
@@ -157,11 +160,14 @@ def intersections_linear_interpolation(x,f,g,main_object,other_object):
         #print("  tv2: "+str(tv2))
         tdiff = abs(tv1/1000 - tv2/1000)
         #print("    tdiff (seconds): "+str(tdiff))
-        if (tdiff < COLLISION_THRESHOLD):
-        #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
-            collisions.append((x[int(xc)],f[int(xc)],tv1))
-        #else:
-        #    print("    trayectories do not crossed in the same time")
+
+        # check if timestamp is after first object timestamp
+        if (tv1 < main_object[3][3][0]):
+            if (tdiff < COLLISION_THRESHOLD):
+            #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
+                collisions.append((x[int(xc)],f[int(xc)],tv1))
+            #else:
+            #    print("    trayectories do not crossed in the same time")
         
         return collisions
 

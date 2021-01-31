@@ -24,7 +24,7 @@ class DataclayObjectManager:
         else:
             res = []
             for obj in objects:
-                res.append(obj[:5])
+                res.append(obj[1:5] + obj[6:])
             return res
 
     def getObject(self, oid):

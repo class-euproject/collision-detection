@@ -147,7 +147,15 @@ def run(params=[]):
     timeConsumed("fexec.map")
 
 #    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
-    res = fexec.get_result(WAIT_DUR_SEC=0.015)
+    res = []
+    if objects:
+      res = fexec.get_result(WAIT_DUR_SEC=0.015)
+
+    client=mqtt.Client()
+    client.connect("192.168.7.41")
+    topic = "cd-out"
+    client.publish(topic,f"CD finished")
+
     print("results: {}".format(res))
     timeConsumed("fexec.wait")
 

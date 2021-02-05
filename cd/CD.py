@@ -173,7 +173,7 @@ def intersections_linear_interpolation(x,f,g,main_object,other_object):
 
 
 
-def collision_detection(main_obj, other_obj):
+def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD):
 
     # check if x, y and t are not empty
     if main_obj[1] and main_obj[2] and main_obj[3] and other_obj[1] and other_obj[2] and other_obj[3]:

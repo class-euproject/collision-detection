@@ -58,7 +58,7 @@ def detect_collision(objects_chunk, connected_cars):
             print(">>> Collision with connected car {} detected".format(cc))
             time_detected = time.time()
             client=mqtt.Client()
-            client.connect("192.168.7.41")
+            client.connect("192.168.7.42")
             
 #            dm = DataclayObjectManager(alias='DKB')
 #            cc_obj = dm.getObject(cc[0])
@@ -153,7 +153,7 @@ def run(params=[]):
         res = fexec.get_result(WAIT_DUR_SEC=0.015)
 
     client=mqtt.Client()
-    client.connect("192.168.7.41")
+    client.connect("192.168.7.42")
     topic = "cd-out"
     client.publish(topic,f"CD finished")
 

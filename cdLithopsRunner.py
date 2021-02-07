@@ -70,7 +70,7 @@ def detect_collision(objects_chunk, connected_cars):
             ccid = cc[4]
 #            _my_object = my_object[1:5]
 #            _cc = cc[1:5]
-            client.publish("test",f"Collision of {my_id} with connected car {ccid} detected, COLLISION DATA {collisions} ==== TRAJ1 {my_object} ==== TRAJ2 {cc} === START_TIME {start} === DETECTION_TIME {time_detected}")
+            client.publish("test",f"{my_id} {ccid} {collisions} {my_object[0]} {my_object[1]} {my_object[2]} {cc[0]} {cc[1]} {cc[2]}")
 #            client.publish("test","Collision of {} with connected car {} detected, COLLISION DATA {} ==== TRAJ1 {} ==== TRAJ2 {} ==== obj1 {} === obj2 {}".format(my_obj.id_object, cc_obj.id_object, collisions, cc, my_object, cc_obj, my_obj))
 
             # here will be push to car mqtt topic
@@ -137,19 +137,20 @@ def run(params=[]):
     timeConsumed("connected_cars = dm.getObjectTuplesWithTp")
 
     kwargs = []
+    res = []
 
-    for objects_chunk in chunker(objects, chunk_size):
+    if objects:
+      for objects_chunk in chunker(objects, chunk_size):
         kwargs.append({'objects_chunk': objects_chunk, 'connected_cars': connected_cars})
 
-    timeConsumed("kwargs.append for {} number of objects".format(len(objects)))
+      timeConsumed("kwargs.append for {} number of objects".format(len(objects)))
 
-    fexec.map(detect_collision, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
-    timeConsumed("fexec.map")
+      fexec.map(detect_collision, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
+      timeConsumed("fexec.map")
 
 #    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
-    res = []
-    if objects:
-      res = fexec.get_result(WAIT_DUR_SEC=0.015)
+      if objects:
+        res = fexec.get_result(WAIT_DUR_SEC=0.015)
 
     client=mqtt.Client()
     client.connect("192.168.7.41")

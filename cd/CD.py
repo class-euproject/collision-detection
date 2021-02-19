@@ -24,6 +24,9 @@
 #  */
 
 import numpy as np
+import math
+import nvector as nv
+wgs84 = nv.FrameE(name='WGS84')
 
 import warnings
 warnings.simplefilter('ignore', np.RankWarning)
@@ -63,7 +66,7 @@ def get_f(x,a,b,c):
     return a * x ** 2 + b * x + c
 
 
-def intersections_no_linear_interpolation(x,f,g,main_object,other_object):
+def intersections_no_linear_interpolation(x,f,g,main_object,other_object,th_collision):
 
     collisions = []
     
@@ -83,13 +86,13 @@ def intersections_no_linear_interpolation(x,f,g,main_object,other_object):
 
         # check if timestamp is after first object timestamp
         if (tv1 >= main_object[3][3][0]):
-            if (tdiff < COLLISION_THRESHOLD):
+            if (tdiff < th_collision):
             #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
                 collisions.append((x[int(sol)],f[int(sol)],tv1))
             #else:
             #    print("    trayectories do not crossed in the same time")
         
-        return collisions
+    return collisions
 
 
 
@@ -142,7 +145,7 @@ def interpolated_intercepts(x, y1, y2):
         return np.array(xcs), np.array(ycs)
 
     
-def intersections_linear_interpolation(x,f,g,main_object,other_object):
+def intersections_linear_interpolation(x,f,g,main_object,other_object,th_collision):
 
     collisions = []
     
@@ -163,13 +166,54 @@ def intersections_linear_interpolation(x,f,g,main_object,other_object):
 
         # check if timestamp is after first object timestamp
         if (tv1 >= main_object[3][3][0]):
-            if (tdiff < COLLISION_THRESHOLD):
+            if (tdiff < th_collision):
             #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
                 collisions.append((x[int(xc)],f[int(xc)],tv1))
             #else:
             #    print("    trayectories do not crossed in the same time")
         
-        return collisions
+    return collisions
+
+def intersections_nvector(x,f,g,main_object,other_object,th_collision):
+
+    collisions = []
+
+    pointA1 = wgs84.GeoPoint(main_object[3][1][0], main_object[3][2][0], degrees=True)
+    pointA2 = wgs84.GeoPoint(main_object[3][1][-1], main_object[3][2][-1], degrees=True)
+    pointB1 = wgs84.GeoPoint(other_object[3][1][0], other_object[3][2][0], degrees=True)
+    pointB2 = wgs84.GeoPoint(other_object[3][1][-1], other_object[3][2][-1], degrees=True)
+    pathA = nv.GeoPath(pointA1, pointA2)
+    pathB = nv.GeoPath(pointB1, pointB2)
+    pointC = pathA.intersect(pathB)
+    np.allclose(pathA.on_path(pointC), pathB.on_path(pointC))
+    np.allclose(pathA.on_great_circle(pointC),
+                         pathB.on_great_circle(pointC))
+
+    pointC = pointC.to_geo_point()
+    lat, lon = pointC.latitude_deg, pointC.longitude_deg
+    if not (math.isnan(lat) or math.isnan(lon)):
+        # filter only for points inside the predicted trajectory
+        if lat >= min(main_object[3][1]) and lat <= max(main_object[3][1]) and lat >= min(other_object[3][1]) and lat <= max(other_object[3][1]):
+            tv1 = get_f(lat,main_object[2][0],main_object[2][1],main_object[2][2])
+            tv2 = get_f(lat,other_object[2][0],other_object[2][1],other_object[2][2])
+            tdiff = abs(tv1/1000 - tv2/1000)
+
+            #print("Collision, with nvector:")
+            #print("  X: "+str(lat))
+            #print("  Y: "+str(lon))
+            #print("  tv1: "+str(tv1))
+            #print("  tv2: "+str(tv2))
+            #print("    tdiff (seconds): "+str(tdiff))
+            
+            # check if timestamp is after first object timestamp
+            if (tv1 >= main_object[3][3][0]) and (tv1 <= main_object[3][3][-1]): 
+                if (tdiff < th_collision):
+                #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
+                    collisions.append((lat,lon,tv1))
+                #else:
+                #    print("    trayectories do not crossed in the same time")
+                    
+    return collisions
 
 
 
@@ -194,8 +238,9 @@ def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD):
             g.append(get_f(xx,other_object[1][0],other_object[1][1],other_object[1][2]))
 
 
-        collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object)
-        #collisions = intersections_linear_interpolation(x,f,g,main_object,other_object)
+        #collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object,th_collision)
+        #collisions = intersections_linear_interpolation(x,f,g,main_object,other_object,th_collision)
+        collisions = intersections_nvector(x,f,g,main_object,other_object,th_collision)
 
     else:
         collisions = []

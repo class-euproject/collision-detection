@@ -28,6 +28,8 @@ import math
 import nvector as nv
 wgs84 = nv.FrameE(name='WGS84')
 
+from shapely.geometry import LineString
+
 import warnings
 warnings.simplefilter('ignore', np.RankWarning)
 
@@ -217,6 +219,36 @@ def intersections_nvector(x,f,g,main_object,other_object,th_collision):
 
 
 
+def intersections_shapely(x,f,g,main_object,other_object,th_collision):
+
+    collisions = []
+
+    tp1 = []
+    tp2 = []
+    for i in range(0,len(main_object[3][1])):
+        tp1.append((main_object[3][1][i],main_object[3][2][i]))
+        tp2.append((other_object[3][1][i],other_object[3][2][i]))
+                
+    line1 = LineString(tp1)
+    line2 = LineString(tp2)
+            
+    if line1.intersects(line2):
+        intersection = list(line1.intersection(line2).coords)[0]
+        tv1 = get_f(intersection[0],main_object[2][0],main_object[2][1],main_object[2][2])
+        tv2 = get_f(intersection[0],other_object[2][0],other_object[2][1],other_object[2][2])
+        tdiff = abs(tv1/1000 - tv2/1000)
+        # check if timestamp is after first object timestamp
+        if (tv1 >= main_object[3][3][0]) and (tv1 <= main_object[3][3][-1]): 
+            if (tdiff < th_collision):
+            #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
+                collisions.append((intersection[0],intersection[1],tv1))
+            #else:
+            #    print("    trayectories do not crossed in the same time")
+                   
+    return collisions
+
+
+
 def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD):
 
     # check if x, y and t are not empty
@@ -240,7 +272,8 @@ def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD):
 
         #collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object,th_collision)
         #collisions = intersections_linear_interpolation(x,f,g,main_object,other_object,th_collision)
-        collisions = intersections_nvector(x,f,g,main_object,other_object,th_collision)
+        #collisions = intersections_nvector(x,f,g,main_object,other_object,th_collision)
+        collisions = intersections_shapely(x,f,g,main_object,other_object,th_collision)
 
     else:
         collisions = []

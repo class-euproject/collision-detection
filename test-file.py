@@ -12,6 +12,7 @@ def main():
     iterations = dm.getIterations()
     for iteration in iterations:
 
+        #print("Frame: " + str(iteration))
         input_objects = dm.getIteration(iteration)
         
         for i1,x1 in enumerate(input_objects):     

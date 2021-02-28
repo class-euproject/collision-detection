@@ -1,15 +1,8 @@
-from dataclay.api import init, finish
-
 import os 
 import time
 
-init()
-
-from CityNS.classes import *
-
 import lithops
 
-from cd.dataclayObjectManager import DataclayObjectManager
 from cd.CD import collision_detection
 
 from geolib import geohash
@@ -79,11 +72,40 @@ def detect_collision(objects_chunk, connected_cars):
 
     return res
 
+def getLimitedNumberOfObjects(objects, limit):
+    while len(objects) < limit:
+        objects.extend(objects)
+
+    return objects[:limit]
+
+CONCURRENT_CD = 3
+REDIS_HOST = '10.106.33.95'
+def acquireLock():
+    import redis
+    redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
+    for i in range(CONCURRENT_CD):
+        lock = redis_client.lock(f'cdlock{i}', 30, 0.1, 0.01)
+        if lock.acquire():
+            return lock
+    return None
+
 def run(params=[]):
 
-    timeConsumed("start")   #TODO: to be removed. needed for debugging
+    timeConsumed("start")
 
-    fexec = lithops.FunctionExecutor()
+#    from dataclay.api import init, finish
+#    init()
+#    from CityNS.classes import *
+    from cd.dataclayObjectManager import DataclayObjectManager
+
+    lock = acquireLock()
+    if not lock:
+        return {'error': f'There currently maximum number of {CONCURRENT_CD} simulatiously running CD actions'}
+
+    timeConsumed("dataclay.init")   #TODO: to be removed. needed for debugging
+
+    fexec = lithops.FunctionExecutor(log_level='DEBUG')
+
     timeConsumed("executor")   #TODO: to be removed. needed for debugging
     if 'ALIAS' not in params:  #TODO: to be removed. needed for debugging
         print("Params %s missing ALIAS parameter" % params)
@@ -106,6 +128,11 @@ def run(params=[]):
 #    import pdb;pdb.set_trace()
     objects = dm.getAllObjects(with_tp=True, with_event_history=False)
     timeConsumed("dm.getAllObjects")
+
+    if limit:
+        objects = getLimitedNumberOfObjects(objects, limit)
+
+    print(f"OBJECTS #{len(objects)}")
 
     ####################
     '''
@@ -132,7 +159,12 @@ def run(params=[]):
     if False:
         connected_cars = select_connected_cars(objects)#objects
     else:
-        connected_cars = objects
+        if params.get("CCS_LIMIT"):
+            print(f'Limiting number of connected cars to {params.get("CCS_LIMIT")}')
+
+            connected_cars = objects[:int(params.get("CCS_LIMIT"))]
+        else:
+            connected_cars = objects
 #    import pdb;pdb.set_trace()
     timeConsumed("connected_cars = dm.getObjectTuplesWithTp")
 
@@ -145,7 +177,8 @@ def run(params=[]):
 
       timeConsumed("kwargs.append for {} number of objects".format(len(objects)))
 
-      fexec.map(detect_collision, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True, 'PRE_RUN': 'dataclay.api.init'})
+#      import pdb;pdb.set_trace()
+      fexec.map(detect_collision, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
       timeConsumed("fexec.map")
 
 #    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
@@ -160,13 +193,19 @@ def run(params=[]):
     print("results: {}".format(res))
     timeConsumed("fexec.wait")
 
+    lock.release()
+
     return {"finished": "true"}
 
 if __name__ == '__main__':
+    import sys
     limit = None
     chunk_size = 1
     if len(sys.argv) > 1:
         chunk_size = sys.argv[1]
     if len(sys.argv) > 2:
         limit = sys.argv[2]
-    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB"})
+    ccs_limit = None
+    if len(sys.argv) > 3:
+        ccs_limit = sys.argv[3]
+    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit})

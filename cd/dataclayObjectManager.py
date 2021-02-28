@@ -2,7 +2,7 @@ from dataclay.api import init, finish
 
 init()
 
-from CityNS.classes import *
+from CityNS.classes import DKB
 
 from geolib import geohash
 

@@ -26,7 +26,7 @@
 import numpy as np
 import math
 
-from shapely.geometry import LineString
+from shapely.geometry import MultiLineString, LineString, Point
 
 import warnings
 warnings.simplefilter('ignore', np.RankWarning)
@@ -190,17 +190,30 @@ def intersections_shapely(x,f,g,main_object,other_object,th_collision):
     line2 = LineString(tp2)
             
     if line1.intersects(line2):
-        intersection = list(line1.intersection(line2).coords)[0]
-        tv1 = get_f(intersection[0],main_object[2][0],main_object[2][1],main_object[2][2])
-        tv2 = get_f(intersection[0],other_object[2][0],other_object[2][1],other_object[2][2])
-        tdiff = abs(tv1/1000 - tv2/1000)
-        # check if timestamp is after first object timestamp
-        if (tv1 >= main_object[3][3][0]) and (tv1 <= main_object[3][3][-1]): 
-            if (tdiff < th_collision):
-            #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
-                collisions.append((intersection[0],intersection[1],tv1))
-            #else:
-            #    print("    trayectories do not crossed in the same time")
+
+        intersection = line1.intersection(line2)
+        coorX = ""
+        coorY = ""
+        if isinstance(intersection, Point) or isinstance(intersection, LineString):
+            coorX = list(intersection.coords)[0][0]
+            coorY = list(intersection.coords)[0][1]
+        elif isinstance(intersection, MultiLineString):
+            coorX = list((list(intersection.geoms)[0]).coords)[0][0]
+            coorY = list((list(intersection.geoms)[0]).coords)[0][1]
+        else:
+            print("Intersection undefined")
+                    
+        if coorX != "" and coorY != "":
+            tv1 = get_f(coorX,main_object[2][0],main_object[2][1],main_object[2][2])
+            tv2 = get_f(coorX,other_object[2][0],other_object[2][1],other_object[2][2])
+            tdiff = abs(tv1/1000 - tv2/1000)
+            # check if timestamp is after first object timestamp
+            if (tv1 >= main_object[3][3][0]) and (tv1 <= main_object[3][3][-1]): 
+                if (tdiff < th_collision):
+                #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
+                    collisions.append((coorX,coorY,tv1))
+                #else:
+                #    print("    trayectories do not crossed in the same time")
                    
     return collisions
 

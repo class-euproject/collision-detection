@@ -31,7 +31,7 @@ def _is_collided(main_object, other_object):
 def _getConnectedCarsInWA(my_object, connected_cars_objects):
     res = []
     for cc in connected_cars_objects:
-        if my_object[3] == cc[3] or my_object[3] in geohash.neighbours(cc[3]):
+        if my_object[4] != cc[4] and (my_object[3] == cc[3] or my_object[3] in geohash.neighbours(cc[3])):
 #            print("my_object[4] == cc[4] {}, my_object[4] in geohash.neighbours(cc[4]) {}".format(my_object[4] == cc[4], my_object[4] in geohash.neighbours(cc[4])))
             res.append(cc)
     return res

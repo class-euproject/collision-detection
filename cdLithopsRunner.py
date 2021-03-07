@@ -78,7 +78,7 @@ def getLimitedNumberOfObjects(objects, limit):
 
     return objects[:limit]
 
-CONCURRENT_CD = 3
+CONCURRENT_CD = 4
 REDIS_HOST = '10.106.33.95'
 def acquireLock():
     import redis

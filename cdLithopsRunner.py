@@ -93,9 +93,6 @@ def run(params=[]):
 
     timeConsumed("start")
 
-#    from dataclay.api import init, finish
-#    init()
-#    from CityNS.classes import *
     from cd.dataclayObjectManager import DataclayObjectManager
 
     lock = acquireLock()

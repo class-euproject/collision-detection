@@ -18,14 +18,7 @@ class DataclayObjectManager:
         self.backend_id = get_backend_id_by_name("DS1")
 
     def getAllObjects(self, with_tp=False, connected=False, with_event_history=True):
-        objects = self.objectsDKB.get_objects([], False, with_tp, connected)
-        if with_event_history:
-            return objects
-        else:
-            res = []
-            for obj in objects:
-                res.append(obj[1:5] + obj[6:])
-            return res
+        return self.objectsDKB.get_objects([], False, with_tp, connected)
 
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")

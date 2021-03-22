@@ -79,8 +79,7 @@ def getLimitedNumberOfObjects(objects, limit):
     return objects[:limit]
 
 CONCURRENT_CD = 4
-REDIS_HOST = '10.106.33.95'
-def acquireLock():
+def acquireLock(REDIS_HOST):
     import redis
     redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
     for i in range(CONCURRENT_CD):
@@ -95,7 +94,7 @@ def run(params=[]):
 
     from cd.dataclayObjectManager import DataclayObjectManager
 
-    lock = acquireLock()
+    lock = acquireLock(params['REDIS_HOST'])
     if not lock:
         return {'error': f'There currently maximum number of {CONCURRENT_CD} simulatiously running CD actions'}
 
@@ -194,6 +193,9 @@ def run(params=[]):
 
     return {"finished": "true"}
 
+
+REDIS_HOST = '10.101.88.224'
+
 if __name__ == '__main__':
     import sys
     limit = None
@@ -205,4 +207,4 @@ if __name__ == '__main__':
     ccs_limit = None
     if len(sys.argv) > 3:
         ccs_limit = sys.argv[3]
-    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit})
+    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': REDIS_HOST})

@@ -1,46 +1,49 @@
-# -*- coding: utf-8 -*-
-
-# /*
-#  * Copyright (C) 2019  Atos Spain SA. All rights reserved.
-#  *
-#  * This file is part of pCEP.
-#  *
-#  * pCEP is free software: you can redistribute it and/or modify it under the
-#  * terms of the Apache License, Version 2.0 (the License);
-#  *
-#  * http://www.apache.org/licenses/LICENSE-2.0
-#  *
-#  * The software is provided "AS IS", without any warranty of any kind, express or implied,
-#  * including but not limited to the warranties of merchantability, fitness for a particular
-#  * purpose and noninfringement, in no event shall the authors or copyright holders be
-#  * liable for any claim, damages or other liability, whether in action of contract, tort or
-#  * otherwise, arising from, out of or in connection with the software or the use or other
-#  * dealings in the software.
-#  *
-#  * See README file for the full disclaimer information and LICENSE file for full license
-#  * information in the project root.
-#  *
-#  * Authors:  Atos Research and Innovation, Atos SPAIN SA
-#  */
+# Collision Detection application
+# CLASS Project: https://class-project.eu/
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#     https://www.apache.org/licenses/LICENSE-2.0
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+#
+#
+# Created on 17 Jun 2020
+# @author: Jorge Montero - ATOS
+#
 
 import numpy as np
 import math
 
-from shapely.geometry import MultiLineString, LineString, Point
+from shapely.geometry import MultiLineString, LineString, Point, Polygon
+from shapely.affinity import rotate
+from shapely.ops import split, nearest_points
 
 import warnings
 warnings.simplefilter('ignore', np.RankWarning)
 
+# CD_TYPE = method to be executed to get collision detections
+# 1 -> intersections_no_linear_interpolation (lineal trajectories)
+# 2 -> intersections_shapely (linear trajectories with shapely)
+# 3 -> intersections_shapely_polygons (with sorrounded area)
+CD_TYPE = 3
 
 COLLISION_THRESHOLD = 2 # max distance in seconds to alert a collision
-
+SHAPELY_DISTANCE = 0.00001 # distance to get sorrounded area from vehicles for each side (0.00001 = 1.5 meters)
+SHAPELY_ANGLE = 25 # angle to get sorrounded area for pedestrians
 
 def transformObjectFromFile(input_object):
     v_id = input_object["v_id"]
     x = input_object["x"]
     y = input_object["y"]
     t = input_object["t"]
-    return (v_id,x,y,t)
+    v_type = input_object["v_type"]
+    # ['trajectory_px', 'trajectory_py', 'trajectory_pt', 'geohash', 'obj_id', 'type']
+    return (x,y,t,"geohash",v_id,v_type)
 
 def get_fxy_fxt(x,y,t):
     fxy = np.polyfit(x, y, 2) # The 2 signifies a polynomial of degree 2
@@ -49,12 +52,15 @@ def get_fxy_fxt(x,y,t):
 
 
 def get_vehicle_functions(input_object):
-    v_id = input_object[0]
-    x = input_object[1]
-    y = input_object[2]
-    t = input_object[3]
+    # ['trajectory_px', 'trajectory_py', 'trajectory_pt', 'geohash', 'obj_id', 'type']
+    v_id = input_object[4]
+    x = input_object[0]
+    y = input_object[1]
+    t = input_object[2]
+    v_type = input_object[5]
+    cd_object = (v_id,x,y,t,v_type)
     vehicle,vehicle_t = get_fxy_fxt(x, y, t)
-    return (v_id,vehicle,vehicle_t,input_object)
+    return (v_id,vehicle,vehicle_t,cd_object)
 
 
 def generate_common_x(x1):
@@ -93,87 +99,6 @@ def intersections_no_linear_interpolation(x,f,g,main_object,other_object,th_coll
             #    print("    trayectories do not crossed in the same time")
         
     return collisions
-
-
-
-def interpolated_intercepts(x, y1, y2):
-        """Find the intercepts of two curves, given by the same x data"""
-
-        def intercept(point1, point2, point3, point4):
-            """find the intersection between two lines
-            the first line is defined by the line between point1 and point2
-            the first line is defined by the line between point3 and point4
-            each point is an (x,y) tuple.
-
-            So, for example, you can find the intersection between
-            intercept((0,0), (1,1), (0,1), (1,0)) = (0.5, 0.5)
-
-            Returns: the intercept, in (x,y) format
-            """    
-
-            def line(p1, p2):
-                A = (p1[1] - p2[1])
-                B = (p2[0] - p1[0])
-                C = (p1[0]*p2[1] - p2[0]*p1[1])
-                return A, B, -C
-
-            def intersection(L1, L2):
-                D  = L1[0] * L2[1] - L1[1] * L2[0]
-                Dx = L1[2] * L2[1] - L1[1] * L2[2]
-                Dy = L1[0] * L2[2] - L1[2] * L2[0]
-
-                x = Dx / D
-                y = Dy / D
-                return x,y
-
-            L1 = line([point1[0],point1[1]], [point2[0],point2[1]])
-            L2 = line([point3[0],point3[1]], [point4[0],point4[1]])
-
-            R = intersection(L1, L2)
-
-            return R
-
-        idxs = np.argwhere(np.diff(np.sign(np.array(y1) - np.array(y2))) != 0)
-
-        xcs = []
-        ycs = []
-
-        for idx in idxs:
-            xc, yc = intercept((x[int(idx)], y1[int(idx)]),((x[int(idx)+1], y1[int(idx)+1])), ((x[int(idx)], y2[int(idx)])), ((x[int(idx)+1], y2[int(idx)+1])))
-            xcs.append(xc)
-            ycs.append(yc)
-        return np.array(xcs), np.array(ycs)
-
-    
-def intersections_linear_interpolation(x,f,g,main_object,other_object,th_collision):
-
-    collisions = []
-    
-    # new method!
-    xcs, ycs = interpolated_intercepts(x,f,g)
-    #if len(xcs) == 0:
-        #print("no intersection")
-    for xc, yc in zip(xcs, ycs):
-        #print("Collision, with linear interpolation:")
-        #print("  X: "+str(xc))
-        #print("  Y: "+str(yc))
-        tv1 = get_f(x[int(xc)],main_object[2][0],main_object[2][1],main_object[2][2])
-        tv2 = get_f(x[int(xc)],other_object[2][0],other_object[2][1],other_object[2][2])
-        #print("  tv1: "+str(tv1))
-        #print("  tv2: "+str(tv2))
-        tdiff = abs(tv1/1000 - tv2/1000)
-        #print("    tdiff (seconds): "+str(tdiff))
-
-        # check if timestamp is after first object timestamp
-        if (tv1 >= main_object[3][3][0]):
-            if (tdiff < th_collision):
-            #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
-                collisions.append((x[int(xc)],f[int(xc)],tv1))
-            #else:
-            #    print("    trayectories do not crossed in the same time")
-        
-    return collisions
-
 
 
 def intersections_shapely(x,f,g,main_object,other_object,th_collision):
@@ -219,7 +144,98 @@ def intersections_shapely(x,f,g,main_object,other_object,th_collision):
 
 
 
-def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD):
+def getShapelySectors(v_type,trajectory,shapely_dist,shapely_ang):
+
+    sectors = []
+    
+    if v_type == "person":
+        for i in range(1,len(trajectory.coords)):
+            p1 = Point(trajectory.coords[0])
+            p1b = Point(trajectory.coords[i-1])
+            p2 = Point(trajectory.coords[i])
+            dist = p1.distance(p2)
+            circle = p1.buffer(dist)
+        
+            line = LineString([trajectory.coords[0],trajectory.coords[i]])
+            left_border = rotate(line, -shapely_ang, origin=p1b)
+            right_border = rotate(line, shapely_ang, origin=p1b)
+            splitter = LineString([*left_border.coords, line.coords[-1] ,*right_border.coords[::-1]])
+            polygon = split(circle, splitter)
+            if len(polygon)>1:
+                sectors.append(polygon[1])
+    else:
+        for i in range(1,len(trajectory.coords)):    
+            line = LineString([trajectory.coords[i-1],trajectory.coords[i]])
+            lineB = line.buffer(shapely_dist, cap_style=1)    
+            sectors.append(lineB)
+
+    return sectors            
+
+
+
+def intersections_shapely_polygons(x,f,g,main_object,other_object,th_collision,shapely_dist,shapely_ang):
+
+    collisions = []
+
+    tp1 = []
+    tp2 = []
+    for i in range(0,len(main_object[3][1])):
+        tp1.append((main_object[3][1][i],main_object[3][2][i]))
+        tp2.append((other_object[3][1][i],other_object[3][2][i]))
+                
+    line1 = LineString(tp1)
+    line2 = LineString(tp2)
+
+    main_object_type = main_object[3][4]
+    other_object_type = other_object[3][4]
+    
+    sectorsA = getShapelySectors(main_object_type,line1,shapely_dist,shapely_ang)
+    sectorsB = getShapelySectors(other_object_type,line2,shapely_dist,shapely_ang)
+
+    collision_shapely = False
+    for i in range(0,len(sectorsA)):
+        for j in range(0,len(sectorsB)):
+            if sectorsA[i].intersects(sectorsB[j]):
+
+                intersection = sectorsA[i].intersection(sectorsB[j])
+                #print(intersection)
+                p0 = intersection.centroid
+                #print(p0.xy)
+                           
+                p1a, p2a = nearest_points(line1, p0)
+                p1b, p2b = nearest_points(line2, p0)
+                #print(p1a.xy)
+                #print(p1b.xy)
+                               
+                coorXa = p1a.xy[0][0]
+                coorYa = p1a.xy[1][0]
+                coorXb = p1b.xy[0][0]
+                coorYb = p1b.xy[1][0]
+
+
+                tv1 = get_f(coorXa,main_object[2][0],main_object[2][1],main_object[2][2])
+                tv2 = get_f(coorXb,other_object[2][0],other_object[2][1],other_object[2][2])
+                tdiff = abs(tv1/1000 - tv2/1000)
+                # check if timestamp is after first object timestamp
+                if (tv1 >= main_object[3][3][0]) and (tv1 <= main_object[3][3][-1]): 
+                    if (tdiff < th_collision):
+                    #    print("    WARNING!!!!!!!!!!!! trayectories crossed in the same time (less than 2 seconds of diference)")
+                        collision_shapely = True
+                        collisions.append((coorXa,coorYa,tv1))
+                    #else:
+                    #    print("    trayectories do not crossed in the same time")
+
+
+            if collision_shapely:
+                break
+        if collision_shapely:
+            break
+
+    return collisions
+
+
+
+def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD, shapely_dist=SHAPELY_DISTANCE, shapely_ang=SHAPELY_ANGLE):
 
     # check if x, y and t are not empty
     if main_obj[1] and main_obj[2] and main_obj[3] and other_obj[1] and other_obj[2] and other_obj[3]:
@@ -239,10 +255,15 @@ def collision_detection(main_obj, other_obj, th_collision=COLLISION_THRESHOLD):
         for xx in x: 
             g.append(get_f(xx,other_object[1][0],other_object[1][1],other_object[1][2]))
 
-
-        #collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object,th_collision)
-        #collisions = intersections_linear_interpolation(x,f,g,main_object,other_object,th_collision)
-        collisions = intersections_shapely(x,f,g,main_object,other_object,th_collision)
+        collisions = []
+        if CD_TYPE == 1:
+            collisions = intersections_no_linear_interpolation(x,f,g,main_object,other_object,th_collision)
+        elif CD_TYPE == 2:
+            collisions = intersections_shapely(x,f,g,main_object,other_object,th_collision)
+        elif CD_TYPE == 3:
+            collisions = intersections_shapely_polygons(x,f,g,main_object,other_object,th_collision,shapely_dist,shapely_ang)
+        else:
+            collisions = intersections_shapely_polygons(x,f,g,main_object,other_object,th_collision,shapely_dist,shapely_ang)
 
     else:
         collisions = []

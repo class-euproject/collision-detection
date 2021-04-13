@@ -36,7 +36,7 @@ def _getConnectedCarsInWA(my_object, connected_cars_objects):
     res = []
     for cc in connected_cars_objects:
         if my_object[4] != cc[4] and (my_object[3] == cc[3] or my_object[3] in geohash.neighbours(cc[3])):
-#            print("my_object[4] == cc[4] {}, my_object[4] in geohash.neighbours(cc[4]) {}".format(my_object[4] == cc[4], my_object[4] in geohash.neighbours(cc[4])))
+#           my_object[4] == cc[4] {}, my_object[4] in geohash.neighbours(cc[4]) {}".format(my_object[4] == cc[4], my_object[4] in geohash.neighbours(cc[4])))
             res.append(cc)
     return res
 
@@ -71,12 +71,12 @@ def detect_collision(objects_chunk, connected_cars):
 #            _cc = cc[1:5]
             client.publish("test",f"{my_id} {ccid} {collisions} {my_object[0]} {my_object[1]} {my_object[2]} {cc[0]} {cc[1]} {cc[2]}")
             print(f"Collision detected, after mqtt={my_id}:{ccid}")
-#            client.publish("test","Collision of {} with connected car {} detected, COLLISION DATA {} ==== TRAJ1 {} ==== TRAJ2 {} ==== obj1 {} === obj2 {}".format(my_obj.id_object, cc_obj.id_object, collisions, cc, my_object, cc_obj, my_obj))
 
             # here will be push to car mqtt topic
             res.append((my_id, ccid, collisions))
-
-    return res
+    print(f"after for cc in cc_in_wa")
+# Return nothing to save minio operation
+#    return res
 
 def getLimitedNumberOfObjects(objects, limit):
     while len(objects) < limit:
@@ -130,6 +130,7 @@ def run(params=[]):
         chunk_size =  int(params['CHUNK_SIZE'])
 
 #    import pdb;pdb.set_trace()
+#    objects = dm.getAllObjectsIDs()
     objects = dm.getAllObjects(with_tp=True, with_event_history=False)
     print("after dm.getAllObjects")
 #    timeConsumed("dm.getAllObjects")
@@ -208,7 +209,7 @@ def run(params=[]):
     return {"finished": "true"}
 
 
-REDIS_HOST = '10.97.50.24'
+REDIS_HOST = '10.106.33.95'
 
 if __name__ == '__main__':
     import sys

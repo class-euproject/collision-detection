@@ -18,7 +18,22 @@ class DataclayObjectManager:
         self.backend_id = get_backend_id_by_name("DS1")
 
     def getAllObjects(self, with_tp=False, connected=False, with_event_history=True):
+#        import pdb;pdb.set_trace()
         return self.objectsDKB.get_objects([], False, with_tp, connected)
+
+    def getAllObjectsIDs(self):
+
+        res = []
+
+        for obj in self.objectsDKB.get_objects([], False, True, True):
+            obj_id = getRuntime().get_object_id_by_alias(obj[4])
+            class_id = 'b79a0fd1-ac91-41fe-b5c6-ff0a5b993a83'
+
+            obj_id = uuid.UUID(obj_id)
+            class_id = uuid.UUID(class_id)
+            res.append(f'{obj_id}:{class_id}')
+
+        return res
 
     def getObject(self, oid):
         obj_id, class_id = oid.split(":")

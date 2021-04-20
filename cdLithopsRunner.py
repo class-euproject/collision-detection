@@ -10,73 +10,11 @@ from cd.CD import collision_detection
 from geolib import geohash
 import paho.mqtt.client as mqtt
 
+from cd.dataclayObjectManager import DataclayObjectManager
+import click
+
 print("after imports")
 
-# needed for debugging
-#BEGIN = time.time()
-#start = BEGIN
-
-#def timeConsumed(name):
-#    global start
-#    print(f'{name} time: {time.time() - start}, current time: {time.time()}')
-#    start = time.time()
-##############
-
-# either return from dataclay only relevant data (to optimize times)
-# or move this filtering logic down to cd.CD.collision_detection()
-def _is_collided(main_object, other_object):
-    res = []
-    if main_object[0] and main_object[1] and main_object[2] and other_object[0] and other_object[1] and other_object[2] and min(main_object[0])>-180 and max(main_object[0])<180 and min(other_object[0])>-180 and max(other_object[0])<180 and min(main_object[1])>-90 and min(other_object[1])>-90 and max(main_object[0])<90 and max(other_object[1])<90 and (max(main_object[0])-min(main_object[0]))<2 and (max(main_object[1])-min(main_object[1]))<2 and (max(other_object[0])-min(other_object[0]))<2 and (max(other_object[1])-min(other_object[1]))<2:
-        print(f"before call collision_detection={main_object[4]}:{other_object[4]}")
-        res = collision_detection(main_object, other_object)
-        print(f"after call collision_detection={main_object[4]}:{other_object[4]}")
-    return res
-
-def _getConnectedCarsInWA(my_object, connected_cars_objects):
-    res = []
-    for cc in connected_cars_objects:
-        if my_object[4] != cc[4] and (my_object[3] == cc[3] or my_object[3] in geohash.neighbours(cc[3])):
-#           my_object[4] == cc[4] {}, my_object[4] in geohash.neighbours(cc[4]) {}".format(my_object[4] == cc[4], my_object[4] in geohash.neighbours(cc[4])))
-            res.append(cc)
-    return res
-
-# should it be called from pywren map or just a single OW function?!
-# how the result should be processed?
-def detect_collision(objects_chunk, connected_cars):
-    res = []
-    print(f"PAIRS_NUM:{len(objects_chunk) * len(connected_cars)}")
-    for my_object in objects_chunk:
-#      print(f"in detect collision with {my_object}")
-      cc_in_wa = _getConnectedCarsInWA(my_object, connected_cars)
-
-      for cc in cc_in_wa:
-        start = time.time()
-        collisions = _is_collided(my_object, cc)
-        if collisions:
-            my_id = my_object[4]
-            ccid = cc[4]
-
-            print(f"Collision detected, before mqtt={my_id}:{ccid}")
-            time_detected = time.time()
-            client=mqtt.Client()
-            client.connect("192.168.7.42")
-            
-#            dm = DataclayObjectManager(alias='DKB')
-#            cc_obj = dm.getObject(cc[0])
-#            my_obj = dm.getObject(my_object[0])
-#            my_object += (my_obj.id_object,)
-#            cc += (cc_obj.id_object,)
-            
-#            _my_object = my_object[1:5]
-#            _cc = cc[1:5]
-            client.publish("test",f"{my_id} {ccid} {collisions} {my_object[0]} {my_object[1]} {my_object[2]} {cc[0]} {cc[1]} {cc[2]}")
-            print(f"Collision detected, after mqtt={my_id}:{ccid}")
-
-            # here will be push to car mqtt topic
-            res.append((my_id, ccid, collisions))
-    print(f"after for cc in cc_in_wa")
-# Return nothing to save minio operation
-#    return res
 
 def getLimitedNumberOfObjects(objects, limit):
     while len(objects) < limit:
@@ -95,61 +33,50 @@ def acquireLock(REDIS_HOST):
     return None
 
 def run(params=[]):
-    print("in run")
-
-#    timeConsumed("start")
-
-    from cd.dataclayObjectManager import DataclayObjectManager
+    print(f"in run with {params}")
 
     lock = acquireLock(params['REDIS_HOST'])
     if not lock:
         return {'error': f'There currently maximum number of {CONCURRENT_CD} simulatiously running CD actions'}
 
-#    timeConsumed("dataclay.init")   #TODO: to be removed. needed for debugging
+    config_overwrite = {'serverless': {}, 'lithops': {}}
+    if params.get('DICKLE', False):
+        config_overwrite['serverless']['customized_runtime'] = params['DICKLE']
+    if params.get('RABBITMQ_MONITOR', False):
+        config_overwrite['lithops']['rabbitmq_monitor'] = params['RABBITMQ_MONITOR']
+    if params.get('STORAGELESS', False):
+        config_overwrite['lithops']['storage'] = 'storageless'
 
-    fexec = lithops.FunctionExecutor(log_level='DEBUG')
+    fexec = lithops.FunctionExecutor(log_level='DEBUG', config_overwrite=config_overwrite)
 
-#    timeConsumed("executor")   #TODO: to be removed. needed for debugging
-    if 'ALIAS' not in params:  #TODO: to be removed. needed for debugging
+    if 'ALIAS' not in params: 
         print("Params %s missing ALIAS parameter" % params)
         exit()
 
     alias = params['ALIAS']
-#    print("ALIAS: %s" % alias)
 
     print("creating dm instance")
     dm = DataclayObjectManager(alias=alias)
-#    timeConsumed("DataclayVehicleManager")   #TODO: to be removed. needed for debugging
 
     limit = None
-    if 'LIMIT' in params and params['LIMIT'] != None:  #TODO: to be removed. needed for debugging
-        limit = int(params['LIMIT'])  #TODO: to be removed. needed for debugging
+    if 'LIMIT' in params and params['LIMIT'] != None: 
+        limit = int(params['LIMIT'])
 
     chunk_size = 1
     if 'CHUNK_SIZE' in params and params['CHUNK_SIZE'] != None:
         chunk_size =  int(params['CHUNK_SIZE'])
 
-#    import pdb;pdb.set_trace()
-#    objects = dm.getAllObjectsIDs()
+    objectsIDs = dm.getAllObjectsIDs()
     objects = dm.getAllObjects(with_tp=True, with_event_history=False)
+
+    if params.get("DC_DISTRIBUTED"):
+        objects = objectsIDs
     print("after dm.getAllObjects")
-#    timeConsumed("dm.getAllObjects")
 
     if limit:
         objects = getLimitedNumberOfObjects(objects, limit)
 
     print(f"OBJECTS #{len(objects)}")
-
-    ####################
-    '''
-    collided = ['c9ff81dc-51e1-45c8-8311-b4b31983b158:a7b9fc01-4d65-4ae0-b55e-ed5b820454a3', '5960f199-f89c-4bc0-b2eb-30284743b648:a7b9fc01-4d65-4ae0-b55e-ed5b820454a3', '905053aa-43e0-4dd5-9baf-b7856678dcd4:a7b9fc01-4d65-4ae0-b55e-ed5b820454a3', 'e15cd8bf-a254-481a-8741-9dceb1287452:a7b9fc01-4d65-4ae0-b55e-ed5b820454a3', '307ea265-bb16-4b95-8366-5786ad8ae5a2:a7b9fc01-4d65-4ae0-b55e-ed5b820454a3', '5960f199-f89c-4bc0-b2eb-30284743b648:a7b9fc01-4d65-4ae0-b55e-ed5b820454a3']
-    test = []
-    for obj in objects:
-        if obj[0] in collided:
-            test.append(obj)
-    objects = test
-    '''
-    #####################
 
     def select_connected_cars(objects):
         CONNECTED_CARS = ['obj_10_132','obj_10_105','obj_10_151','obj_10_150', 'obj_10_28','obj_10_13','','']
@@ -163,7 +90,7 @@ def run(params=[]):
         return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
     if False:
-        connected_cars = select_connected_cars(objects)#objects
+        connected_cars = select_connected_cars(objects)
     else:
         if params.get("CCS_LIMIT"):
             print(f'Limiting number of connected cars to {params.get("CCS_LIMIT")}')
@@ -171,27 +98,28 @@ def run(params=[]):
             connected_cars = objects[:int(params.get("CCS_LIMIT"))]
         else:
             connected_cars = objects
-#    import pdb;pdb.set_trace()
-#    timeConsumed("connected_cars = dm.getObjectTuplesWithTp")
 
     kwargs = []
     res = []
 
     if objects:
-      for objects_chunk in chunker(objects, chunk_size):
-        kwargs.append({'objects_chunk': objects_chunk, 'connected_cars': connected_cars})
-
-      #timeConsumed("kwargs.append for {} number of objects".format(len(objects)))
-
-#      import pdb;pdb.set_trace()
       print("before lithops fexec.map")
-      fexec.map(detect_collision, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
+      if params.get("DC_DISTRIBUTED"):
+        for objects_chunk in chunker(objects, chunk_size):
+            kwargs.append({'objects_chunk': objects_chunk, 'cc_num_limit': limit})
 
-#      timeConsumed("fexec.map")
+        from dist_cd import detect_collision_distributed_dc
+        fexec.map(detect_collision_distributed_dc, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
+      else:
+        for objects_chunk in chunker(objects, chunk_size):
+          kwargs.append({'objects_chunk': objects_chunk, 'connected_cars': connected_cars})
 
-#    pw.wait(download_results=False, WAIT_DUR_SEC=0.015)
+        from centr_cd import detect_collision_centralized
+        fexec.map(detect_collision_centralized, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
+
       print("after lithops fexec.map")
       if objects:
+#        fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
         res = fexec.get_result(WAIT_DUR_SEC=0.015)
 
     print("lithops finished")
@@ -201,7 +129,6 @@ def run(params=[]):
     client.publish(topic,f"CD finished")
 
     print("results: {}".format(res))
-#    timeConsumed("fexec.wait")
 
     lock.release()
 
@@ -209,17 +136,23 @@ def run(params=[]):
     return {"finished": "true"}
 
 
-REDIS_HOST = '10.106.33.95'
+
+@click.command()
+@click.option('--redis', default='10.106.33.95', help='Redis host', type=str)
+@click.option('--chunk_size', default=1, help='Size of object chunks, the actual number of chunks will be determined based on object_num / chunk_size', type=int)
+@click.option('--limit', default='-1', help='Limits the number of objects. In case number of actual objects is lower it will duplicate objects up to specified limit', type=int)
+@click.option('--ccs_limit', default=None, help='Hard limit number of connected cars', type=int)
+@click.option('--dc_distributed', help='if specified will use DC in distributed approach', is_flag=True)
+
+@click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
+@click.option('--rabbitmq_monitor', help='If specified set rabbitmq_monitor option to True', is_flag=True)
+@click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
+def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless):
+    params={"CHUNK_SIZE": chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': redis,
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless}
+
+    run(params=params)
+
 
 if __name__ == '__main__':
-    import sys
-    limit = None
-    chunk_size = 1
-    if len(sys.argv) > 1:
-        chunk_size = sys.argv[1]
-    if len(sys.argv) > 2:
-        limit = sys.argv[2]
-    ccs_limit = None
-    if len(sys.argv) > 3:
-        ccs_limit = sys.argv[3]
-    run(params={"CHUNK_SIZE" : chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': REDIS_HOST})
+    run_wrapper()

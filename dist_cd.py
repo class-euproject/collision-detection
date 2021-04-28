@@ -29,12 +29,22 @@ def _getConnectedCarsInWA(my_object, connected_cars_objects):
             res.append(cc)
     return res
 
-def detect_collision_distributed_dc(objects_chunk, cc_num_limit):
+
+
+def detect_collision_distributed_dc(objects_chunk, cc_num_limit, cc_ids):
     res = []
     print(f"in detect_collision_distributed_dc with {objects_chunk} --------")
     dm = DataclayObjectManager(alias='DKB')
 
-    connected_cars = dm.getAllObjects(with_tp=True, with_event_history=False)
+    connected_cars = []
+    if cc_ids:
+        print(f"getting all cc objects from {cc_ids}")
+        for cc_id in cc_ids:
+            connected_cars.append(dm.getObject(cc_id))
+    else:
+        print(f"getting all cc object sin batch")
+        connected_cars = dm.getAllObjects(with_tp=True, with_event_history=False)
+
     connected_cars = getLimitedNumberOfObjects(connected_cars, cc_num_limit)
     print(f"PAIRS_NUM:{len(objects_chunk) * len(connected_cars)}")
 
@@ -62,6 +72,41 @@ def detect_collision_distributed_dc(objects_chunk, cc_num_limit):
 
             # push to car mqtt topic
             res.append((my_id, ccid, collisions))
+    print(f"after for cc in cc_in_wa")
+
+def publish_result(object0, object1):
+    my_id = object0[4]
+    ccid = object1[4]
+
+    print(f"Collision detected, before mqtt={my_id}:{ccid}")
+    time_detected = time.time()
+    client=mqtt.Client()
+    client.connect("192.168.7.42")
+
+    client.publish("test",f"{my_id} {ccid} {collisions} {my_object[0]} {my_object[1]} {my_object[2]} {cc[0]} {cc[1]} {cc[2]}")
+    print(f"Collision detected, after mqtt={my_id}:{ccid}")
+
+def detect_collision_distributed_dc_pairs(pairs_chunk):
+    res = []
+    print(f"in  detect_collision_distributed_dc_pairs with {pairs_chunk} --------!!")
+    dm = DataclayObjectManager(alias='DKB')
+
+    print(f"PAIRS_NUM:{len(pairs_chunk)}")
+
+    for pair in pairs_chunk:
+        obj0 = dm.getObject(pair[0])
+        obj1 = dm.getObject(pair[1])
+        object0 = (obj0.trajectory_px, obj0.trajectory_py, obj0.trajectory_pt, obj0.geohash, obj0.id_object, obj0.type)
+        object1 = (obj1.trajectory_px, obj1.trajectory_py, obj1.trajectory_pt, obj1.geohash, obj1.id_object, obj1.type)
+
+        start = time.time()
+        collisions = _is_collided(object0, object1)
+        if collisions:
+            publish_result(object0, object1)
+        collisions = _is_collided(object1, object0)
+        if collisions:
+            publish_result(object1, object0)
+
     print(f"after for cc in cc_in_wa")
 
 def getLimitedNumberOfObjects(objects, limit):

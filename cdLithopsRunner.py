@@ -10,7 +10,8 @@ from cd.CD import collision_detection
 from geolib import geohash
 import paho.mqtt.client as mqtt
 
-from cd.dataclayObjectManager import DataclayObjectManager
+from cd.dataclayObjectManager import DataclayObjectManager as CD_DOM
+from tp.dataclayObjectManager import DataclayObjectManager as TP_DOM
 import click
 
 print("after imports")
@@ -23,7 +24,7 @@ def getLimitedNumberOfObjects(objects, limit):
     return objects[:limit]
 
 CONCURRENT_CD = 4
-def acquireLock(REDIS_HOST):
+def aacquireLock(REDIS_HOST):
     import redis
     redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
     for i in range(CONCURRENT_CD):
@@ -32,22 +33,57 @@ def acquireLock(REDIS_HOST):
             return lock
     return None
 
+CONCURRENCY = 4
+def acquireLock(REDIS_HOST, operation):
+    import redis
+    redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
+    for i in range(CONCURRENCY):
+        lock = redis_client.lock(f'{operation}{i}', 60, 0.1, 0.01)
+        if lock.acquire():
+            return lock
+    return None
+
 def run(params=[]):
     print(f"in run with {params}")
 
-    lock = acquireLock(params['REDIS_HOST'])
+    operation = params.get('OPERATION')
+    lock = acquireLock(params['REDIS_HOST'], operation)
     if not lock:
-        return {'error': f'There currently maximum number of {CONCURRENT_CD} simulatiously running CD actions'}
+        return {'error': f'There currently maximum number of {CONCURRENCY} simulatiously running {operation} actions'}
 
     config_overwrite = {'serverless': {}, 'lithops': {}}
-    if params.get('DICKLE', False):
-        config_overwrite['serverless']['customized_runtime'] = params['DICKLE']
     if params.get('RABBITMQ_MONITOR', False):
         config_overwrite['lithops']['rabbitmq_monitor'] = params['RABBITMQ_MONITOR']
     if params.get('STORAGELESS', False):
         config_overwrite['lithops']['storage'] = 'storageless'
 
-    fexec = lithops.FunctionExecutor(log_level='DEBUG', config_overwrite=config_overwrite)
+    def get_map_function():
+        if params.get("DC_DISTRIBUTED"):
+            if operation == 'cd':
+                from dist_cd import detect_collision_distributed_dc_pairs
+                return detect_collision_distributed_dc_pairs
+            if operation == 'tp':
+                from map_tp import traj_pred_v2_distr
+                return traj_pred_v2_distr
+        else:
+            if operation == 'cd':
+                from centr_cd import detect_collision_centralized
+                return detect_collision_centralized
+            if operation == 'tp':
+                from map_tp import traj_pred_v2_wrapper
+                return traj_pred_v2_wrapper
+        
+    map_function = get_map_function()
+    function_mod_name = os.path.basename(map_function.__code__.co_filename)
+    if function_mod_name.endswith('.py'):
+        function_mod_name = function_mod_name[:-3]
+
+    if params.get('DICKLE', False):
+        config_overwrite['serverless']['customized_runtime'] = params['DICKLE']
+        config_overwrite['serverless']['map_func_mod'] = function_mod_name
+        config_overwrite['serverless']['map_func'] = map_function.__name__
+
+    fexec = lithops.FunctionExecutor(log_level='DEBUG', runtime=params.get('RUNTIME'), config_overwrite=config_overwrite)
 
     if 'ALIAS' not in params: 
         print("Params %s missing ALIAS parameter" % params)
@@ -56,7 +92,10 @@ def run(params=[]):
     alias = params['ALIAS']
 
     print("creating dm instance")
-    dm = DataclayObjectManager(alias=alias)
+    if operation == 'cd':
+        dm = CD_DOM(alias=alias)
+    else:
+        dm = TP_DOM(alias=alias)
 
     limit = None
     if 'LIMIT' in params and params['LIMIT'] != None: 
@@ -66,11 +105,11 @@ def run(params=[]):
     if 'CHUNK_SIZE' in params and params['CHUNK_SIZE'] != None:
         chunk_size =  int(params['CHUNK_SIZE'])
 
-    objectsIDs = dm.getAllObjectsIDs()
-    objects = dm.getAllObjects(with_tp=True, with_event_history=False)
-
     if params.get("DC_DISTRIBUTED"):
-        objects = objectsIDs
+        objects = dm.getAllObjectsIDs()
+    else:
+        objects = dm.getAllObjects()
+
     print("after dm.getAllObjects")
 
     if limit:
@@ -78,49 +117,44 @@ def run(params=[]):
 
     print(f"OBJECTS #{len(objects)}")
 
-    def select_connected_cars(objects):
-        CONNECTED_CARS = ['obj_10_132','obj_10_105','obj_10_151','obj_10_150', 'obj_10_28','obj_10_13','','']
-        res = []
-        for obj in objects:
-            if dm.getObject(obj[0]).id_object in CONNECTED_CARS:
-                res.append(obj)
-        return res
-
     def chunker(seq, size):
         return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-    if False:
-        connected_cars = select_connected_cars(objects)
+    if params.get("CCS_LIMIT"):
+        print(f'Limiting number of connected cars to {params.get("CCS_LIMIT")}')
+        connected_cars = objects[:int(params.get("CCS_LIMIT"))]
     else:
-        if params.get("CCS_LIMIT"):
-            print(f'Limiting number of connected cars to {params.get("CCS_LIMIT")}')
-
-            connected_cars = objects[:int(params.get("CCS_LIMIT"))]
-        else:
-            connected_cars = objects
+        connected_cars = objects
 
     kwargs = []
     res = []
 
+    def get_chunks(objects, chunk_size):
+        kwargs = []
+        if operation == 'tp':
+            for objects_chunk in chunker(objects, chunk_size):
+                kwargs.append({'objects_chunk': objects_chunk})
+        else:
+            if params.get("DC_DISTRIBUTED"):
+                from itertools import combinations
+                for pairs_chunk in chunker(list(combinations(objects, r=2)), chunk_size):
+                    kwargs.append({'pairs_chunk': pairs_chunk})
+            else:
+                for objects_chunk in chunker(objects, chunk_size):
+                    kwargs.append({'objects_chunk': objects_chunk, 'connected_cars': connected_cars})
+        return kwargs
+
+#    import pdb;pdb.set_trace()
     if objects:
       print("before lithops fexec.map")
-      if params.get("DC_DISTRIBUTED"):
-        for objects_chunk in chunker(objects, chunk_size):
-            kwargs.append({'objects_chunk': objects_chunk, 'cc_num_limit': limit})
 
-        from dist_cd import detect_collision_distributed_dc
-        fexec.map(detect_collision_distributed_dc, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
-      else:
-        for objects_chunk in chunker(objects, chunk_size):
-          kwargs.append({'objects_chunk': objects_chunk, 'connected_cars': connected_cars})
-
-        from centr_cd import detect_collision_centralized
-        fexec.map(detect_collision_centralized, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
+      kwargs = get_chunks(objects, chunk_size)
+      fexec.map(map_function, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
 
       print("after lithops fexec.map")
       if objects:
-#        fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
-        res = fexec.get_result(WAIT_DUR_SEC=0.015)
+        fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
+#        res = fexec.get_result(WAIT_DUR_SEC=0.015)
 
     print("lithops finished")
     client=mqtt.Client()
@@ -147,9 +181,11 @@ def run(params=[]):
 @click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
 @click.option('--rabbitmq_monitor', help='If specified set rabbitmq_monitor option to True', is_flag=True)
 @click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
-def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless):
+@click.option('--operation', help='Operation type, cd or tp', default='cd')
+@click.option('--runtime', help='Lithops runtime docker image to use')
+def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, operation, runtime):
     params={"CHUNK_SIZE": chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': redis,
-            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless}
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime}
 
     run(params=params)
 

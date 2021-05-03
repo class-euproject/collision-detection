@@ -37,7 +37,7 @@ ssh <user>@<dataclay host> "cd <DATACLAY_CLOUD_DIR>/;./GetStubs.sh
 scp -r <user>@<dataclay host> "cd <DATACLAY_CLOUD_DIR>/stubs .
 ```
 
-Update lithops config with [optimal setup][https://github.com/class-euproject/lithops/blob/extend_runtime2/docs/mode_serverless.md#dynamic-runtime-customization]
+Update lithops config with [optimal setup](https://github.com/class-euproject/lithops/blob/extend_runtime2/docs/mode_serverless.md#dynamic-runtime-customization)
 
 Run collision detection with defaults:
 ```
@@ -54,12 +54,17 @@ The data sent to workers in chunks when default chunk size is 1. Use --chunk_siz
 python lithops_runner.py --operation cd --chunk_size 3
 ```
 
-In case the runtime been extended with map function module and dependencies using ```lithops runtime extend``` (there an option to specify runtime expilictly instead of updating .lithops_config) the --dickle, "dockerized pickle", can be applied
+Extend runtime docker image with map function module and dependencies using [lithops runtime extend](https://github.com/class-euproject/lithops/blob/extend_runtime2/docs/mode_serverless.md#dynamic-runtime-customization)
+```
+lithops runtime extend $RUNTIME_NAME --filepath /home/class/collision-detection/centr_cd.py --function detect_collision_centralized
+```
+
+In order to avoid expensive serialization/deserialization on driver and workers layers --dickle, "dockerized pickle", parameter can be applied along with previously extended runtime docker image
 ```
 python lithops_runner.py --operation cd --chunk_size 3 --dickle --runtime <EXTENDED_RUNTIME_IMAGE>
 ```
 
-In case .lithops_config has rabbitmq section configured it is possible to avoid object storage
+In case .lithops_config has rabbitmq section configured, to avoid interaction with object storage in driver and worker layers
 ```
 python lithops_runner.py --operation cd --chunk_size 3 --dickle --runtime <EXTENDED_RUNTIME_IMAGE> --storageless
 ```

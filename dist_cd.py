@@ -74,7 +74,7 @@ def detect_collision_distributed_dc(objects_chunk, cc_num_limit, cc_ids):
             res.append((my_id, ccid, collisions))
     print(f"after for cc in cc_in_wa")
 
-def publish_result(object0, object1):
+def publish_result(object0, object1, collisions):
     my_id = object0[4]
     ccid = object1[4]
 
@@ -83,7 +83,7 @@ def publish_result(object0, object1):
     client=mqtt.Client()
     client.connect("192.168.7.42")
 
-    client.publish("test",f"{my_id} {ccid} {collisions} {my_object[0]} {my_object[1]} {my_object[2]} {cc[0]} {cc[1]} {cc[2]}")
+    client.publish("test",f"{my_id} {ccid} {collisions} {object0[0]} {object0[1]} {object0[2]} {object1[0]} {object1[1]} {object1[2]}")
     print(f"Collision detected, after mqtt={my_id}:{ccid}")
 
 def detect_collision_distributed_dc_pairs(pairs_chunk):
@@ -102,10 +102,10 @@ def detect_collision_distributed_dc_pairs(pairs_chunk):
         start = time.time()
         collisions = _is_collided(object0, object1)
         if collisions:
-            publish_result(object0, object1)
+            publish_result(object0, object1, collisions)
         collisions = _is_collided(object1, object0)
         if collisions:
-            publish_result(object1, object0)
+            publish_result(object1, object0, collisions)
 
     print(f"after for cc in cc_in_wa")
 

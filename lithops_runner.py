@@ -28,7 +28,7 @@ def aacquireLock(REDIS_HOST):
     import redis
     redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
     for i in range(CONCURRENT_CD):
-        lock = redis_client.lock(f'cdlock{i}', 60, 0.1, 0.01)
+        lock = redis_client.lock(f'cdlock{i}', 300, 0.1, 0.01)
         if lock.acquire():
             return lock
     return None
@@ -38,7 +38,7 @@ def acquireLock(REDIS_HOST, operation):
     import redis
     redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
     for i in range(CONCURRENCY):
-        lock = redis_client.lock(f'{operation}{i}', 60, 0.1, 0.01)
+        lock = redis_client.lock(f'{operation}{i}', 300, 0.1, 0.01)
         if lock.acquire():
             return lock
     return None
@@ -52,10 +52,9 @@ def run(params=[]):
         return {'error': f'There currently maximum number of {CONCURRENCY} simulatiously running {operation} actions'}
 
     config_overwrite = {'serverless': {}, 'lithops': {}}
-    if params.get('RABBITMQ_MONITOR', False):
-        config_overwrite['lithops']['rabbitmq_monitor'] = params['RABBITMQ_MONITOR']
-    if params.get('STORAGELESS', False):
+    if params.get('STORAGELESS', True):
         config_overwrite['lithops']['storage'] = 'storageless'
+        config_overwrite['lithops']['rabbitmq_monitor'] = True 
 
     def get_map_function():
         if params.get("DC_DISTRIBUTED"):
@@ -78,12 +77,12 @@ def run(params=[]):
     if function_mod_name.endswith('.py'):
         function_mod_name = function_mod_name[:-3]
 
-    if params.get('DICKLE', False):
-        config_overwrite['serverless']['customized_runtime'] = params['DICKLE']
+    if params.get('DICKLE', True):
+        config_overwrite['serverless']['customized_runtime'] = True
         config_overwrite['serverless']['map_func_mod'] = function_mod_name
         config_overwrite['serverless']['map_func'] = map_function.__name__
 
-    fexec = lithops.FunctionExecutor(log_level='DEBUG', runtime=params.get('RUNTIME'), config_overwrite=config_overwrite)
+    fexec = lithops.FunctionExecutor(log_level='INFO', runtime=params.get('RUNTIME'), config_overwrite=config_overwrite)
 
     if 'ALIAS' not in params: 
         print("Params %s missing ALIAS parameter" % params)
@@ -172,20 +171,19 @@ def run(params=[]):
 
 
 @click.command()
+@click.option('--operation', help='Operation type, cd or tp', required=True)
+
 @click.option('--redis', default='10.106.33.95', help='Redis host', type=str)
 @click.option('--chunk_size', default=1, help='Size of object chunks, the actual number of chunks will be determined based on object_num / chunk_size', type=int)
 @click.option('--limit', default='-1', help='Limits the number of objects. In case number of actual objects is lower it will duplicate objects up to specified limit', type=int)
 @click.option('--ccs_limit', default=None, help='Hard limit number of connected cars', type=int)
 @click.option('--dc_distributed', help='if specified will use DC in distributed approach', is_flag=True)
-
 @click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
-@click.option('--rabbitmq_monitor', help='If specified set rabbitmq_monitor option to True', is_flag=True)
 @click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
-@click.option('--operation', help='Operation type, cd or tp', default='cd')
 @click.option('--runtime', help='Lithops runtime docker image to use')
-def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, rabbitmq_monitor, storageless, operation, runtime):
+def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, storageless, operation, runtime):
     params={"CHUNK_SIZE": chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': redis,
-            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'RABBITMQ_MONITOR': rabbitmq_monitor, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime}
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime}
 
     run(params=params)
 

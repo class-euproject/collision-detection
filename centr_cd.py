@@ -5,6 +5,7 @@ import time
 from cd.CD import collision_detection
 
 from geolib import geohash
+
 import paho.mqtt.client as mqtt
 
 print("after imports")
@@ -34,7 +35,8 @@ def detect_collision_centralized(objects_chunk, connected_cars):
       for cc in cc_in_wa:
         start = time.time()
         collisions = _is_collided(my_object, cc)
-        if collisions:
+        testReport = my_object[4] == '2407_358' and cc[4] == '2407_379'
+        if collisions or testReport:
             my_id = my_object[4]
             ccid = cc[4]
 

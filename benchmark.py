@@ -23,7 +23,7 @@ AUTH_KEY = '23bc46b1-71f6-4ed5-8c54-816aa4f8c502:123zO3xZCLrMN6v2BKK1dXYFpXlPkcc
 NAMESPACE = '_'
 BLOCKING = 'true'
 RESULT = 'false'
-ACTION = 'cdAction'
+ACTION = 'class/cdAction'
 
 url = f'{APIHOST}/api/v1/namespaces/{NAMESPACE}/actions/{ACTION}'
 user_pass = AUTH_KEY.split(':')
@@ -427,13 +427,13 @@ def get_activation_invocation_times(aid):
       post_invoker = findInLogs(f'{tid} [ShardingContainerPoolBalancer] posted to invoker', 0, optionalStrToSearch=f'{tid} [LeanBalancer] posted to invoker')
       d_post_invoker = datetime.strptime(post_invoker, TD_FORMAT)
 
-      post_finish_controller = findInLogs(f'{tid} [BasicHttpService] [marker:http_post.200_counter', 0, optionalStrToSearch=f'{tid} [BasicHttpService] [marker:http_post.202_counter')
+      post_finish_controller = findInLogs(f'{tid} [BasicHttpService] [marker:http_post.200_counter', 0, optionalStrToSearch=f'{tid} [ShardingContainerPoolBalancer] received completion ack for')
       d_post_finish_controller = datetime.strptime(post_finish_controller, TD_FORMAT)
 
       a_invoker_start = findInLogs(f'{tid} [InvokerReactive]  [marker:invoker_activation_start', 0)
       d_a_invoker_start = datetime.strptime(a_invoker_start, TD_FORMAT)
 
-      a_invoker_finish = findInLogs(f'{tid} [KubernetesContainer] running result: ok [marker:invoker_activationRun_finish', 0, optionalStrToSearch=f'{tid} [DockerContainer] running result: ok [marker:invoker_activationRun_finish')
+      a_invoker_finish = findInLogs(f'{tid} [KubernetesContainer] running result: ok [marker:invoker_activationRun_finish', 0, optionalStrToSearch=f'{tid} [ActionsApi]  [marker:controller_blockingActivation_finish')
       d_a_invoker_finish = datetime.strptime(a_invoker_finish, TD_FORMAT)
     except Exception as e:
         import traceback
@@ -500,7 +500,7 @@ def do_benchmark(iteration, test_name, alias, chunk_size, limit, ccs_limit, dc_d
     #print(f'{datetime.now()} {ACTION} post')
     req_start = datetime.now()
     data={"ALIAS": alias, "CHUNK_SIZE": chunk_size, "LIMIT": limit, "CCS_LIMIT": ccs_limit,
-            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime}
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime, 'LOG_LEVEL': 'DEBUG'}
             
     response = requests.post(url, params={'blocking':BLOCKING, 'result':RESULT}, json=data, auth=(user_pass[0], user_pass[1]), verify=False)
 
@@ -537,6 +537,9 @@ def do_benchmark(iteration, test_name, alias, chunk_size, limit, ccs_limit, dc_d
         writer.writerow(cdHeaders)
         writer.writerows(cdTimes)
         return
+
+#    import pdb;pdb.set_trace()
+
 
     
     activations = getLithopsRuntimesActivationIDS(aid)

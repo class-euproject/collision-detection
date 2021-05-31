@@ -23,16 +23,6 @@ def getLimitedNumberOfObjects(objects, limit):
 
     return objects[:limit]
 
-CONCURRENT_CD = 4
-def aacquireLock(REDIS_HOST):
-    import redis
-    redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
-    for i in range(CONCURRENT_CD):
-        lock = redis_client.lock(f'cdlock{i}', 300, 0.1, 0.01)
-        if lock.acquire():
-            return lock
-    return None
-
 CONCURRENCY = 4
 def acquireLock(REDIS_HOST, operation):
     import redis
@@ -45,8 +35,10 @@ def acquireLock(REDIS_HOST, operation):
 
 def run(params=[]):
     print(f"in run with {params}")
+#    import pdb;pdb.set_trace()
 
     operation = params.get('OPERATION')
+
     lock = acquireLock(params['REDIS_HOST'], operation)
     if not lock:
         return {'error': f'There currently maximum number of {CONCURRENCY} simulatiously running {operation} actions'}
@@ -55,9 +47,12 @@ def run(params=[]):
     if params.get('STORAGELESS', True):
         config_overwrite['lithops']['storage'] = 'storageless'
         config_overwrite['lithops']['rabbitmq_monitor'] = True 
+    else:
+        config_overwrite['serverless']['customized_runtime'] = False
+
 
     def get_map_function():
-        if params.get("DC_DISTRIBUTED"):
+        if params.get("DC_DISTRIBUTED", False):
             if operation == 'cd':
                 from dist_cd import detect_collision_distributed_dc_pairs
                 return detect_collision_distributed_dc_pairs
@@ -77,12 +72,14 @@ def run(params=[]):
     if function_mod_name.endswith('.py'):
         function_mod_name = function_mod_name[:-3]
 
-    if params.get('DICKLE', True):
+    if params.get('DICKLE', False):
         config_overwrite['serverless']['customized_runtime'] = True
         config_overwrite['serverless']['map_func_mod'] = function_mod_name
         config_overwrite['serverless']['map_func'] = map_function.__name__
 
-    fexec = lithops.FunctionExecutor(log_level='INFO', runtime=params.get('RUNTIME'), config_overwrite=config_overwrite)
+    log_level = params.get('LOG_LEVEL', 'INFO')
+
+    fexec = lithops.FunctionExecutor(log_level=log_level, runtime=params.get('RUNTIME'), config_overwrite=config_overwrite)
 
     if 'ALIAS' not in params: 
         print("Params %s missing ALIAS parameter" % params)
@@ -104,6 +101,7 @@ def run(params=[]):
     if 'CHUNK_SIZE' in params and params['CHUNK_SIZE'] != None:
         chunk_size =  int(params['CHUNK_SIZE'])
 
+#    import pdb;pdb.set_trace()
     if params.get("DC_DISTRIBUTED"):
         objects = dm.getAllObjectsIDs()
     else:
@@ -181,9 +179,10 @@ def run(params=[]):
 @click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
 @click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
 @click.option('--runtime', help='Lithops runtime docker image to use')
-def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, storageless, operation, runtime):
+@click.option('--log_level', help='Log level', default='DEBUG')
+def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, storageless, operation, runtime, log_level):
     params={"CHUNK_SIZE": chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': redis,
-            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime}
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime, 'LOG_LEVEL': log_level}
 
     run(params=params)
 

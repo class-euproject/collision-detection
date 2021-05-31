@@ -38,7 +38,7 @@ def traj_pred_v2_distr(objects_chunk):
     print(f"objects in chunk: {len(objects_chunk)}")
 
     for object_id_frame in objects_chunk:
-      # geto object by id
+      # get_object by id
       print(f"before dm.getObject: {object_id_frame[0]}")
       obj = dm.getObject(object_id_frame[0])
       events_history = obj.get_events_history(QUAD_REG_LEN_DICT[obj.type])

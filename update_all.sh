@@ -9,6 +9,8 @@ PROJECTS_ROOT_DIR="${HOME}"
 source ${PROJECTS_ROOT_DIR}/venv/bin/activate
 #RUNTIME_NAME=kpavel/lithops_runtime:13.0
 
+LOG_LEVEL='INFO'
+
 
 function pull_image_on_nodes() {
     image_name=$1
@@ -122,8 +124,8 @@ echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 rm classAction.zip
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithops_runner.py cd tp map_tp.py centr_cd.py dist_cd.py
-wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL 'DEBUG'  classAction.zip
-wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL 'DEBUG' classAction.zip
+wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
 
 #wsk -i rule create cdtimerrule cdtimer class/cdAction
 #wsk -i rule create tp-rule tp-trigger class/tpAction

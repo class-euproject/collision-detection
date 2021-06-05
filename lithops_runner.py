@@ -16,6 +16,7 @@ import click
 
 print("after imports")
 
+dm = None
 
 def getLimitedNumberOfObjects(objects, limit):
     while len(objects) < limit:
@@ -23,12 +24,12 @@ def getLimitedNumberOfObjects(objects, limit):
 
     return objects[:limit]
 
-CONCURRENCY = 4
+CONCURRENCY = 1 
 def acquireLock(REDIS_HOST, operation):
     import redis
     redis_client = redis.StrictRedis(host=REDIS_HOST,port=6379)
     for i in range(CONCURRENCY):
-        lock = redis_client.lock(f'{operation}{i}', 300, 0.1, 0.01)
+        lock = redis_client.lock(f'{operation}{i}', 60, 0.1, 0.01)
         if lock.acquire():
             return lock
     return None
@@ -40,8 +41,8 @@ def run(params=[]):
     operation = params.get('OPERATION')
 
     lock = acquireLock(params['REDIS_HOST'], operation)
-    if not lock:
-        return {'error': f'There currently maximum number of {CONCURRENCY} simulatiously running {operation} actions'}
+#    if not lock:
+#        return {'error': f'There currently maximum number of {CONCURRENCY} simulatiously running {operation} actions'}
 
     config_overwrite = {'serverless': {}, 'lithops': {}}
     if params.get('STORAGELESS', True):
@@ -87,10 +88,14 @@ def run(params=[]):
 
     alias = params['ALIAS']
 
-    print("creating dm instance")
-    if operation == 'cd':
+    global dm
+
+    if not dm:
+      print("creating dm instance")
+
+      if operation == 'cd':
         dm = CD_DOM(alias=alias)
-    else:
+      else:
         dm = TP_DOM(alias=alias)
 
     limit = None
@@ -101,13 +106,18 @@ def run(params=[]):
     if 'CHUNK_SIZE' in params and params['CHUNK_SIZE'] != None:
         chunk_size =  int(params['CHUNK_SIZE'])
 
+    
 #    import pdb;pdb.set_trace()
     if params.get("DC_DISTRIBUTED"):
         objects = dm.getAllObjectsIDs()
+    elif params.get("STEAM_UP"):
+#        objects = getLimitedNumberOfObjects([], int(s_up))
+        objects = dm.get_dummy_objects()
     else:
         objects = dm.getAllObjects()
 
     print("after dm.getAllObjects")
+#    import pdb;pdb.set_trace()
 
     if limit:
         objects = getLimitedNumberOfObjects(objects, limit)
@@ -117,11 +127,19 @@ def run(params=[]):
     def chunker(seq, size):
         return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-    if params.get("CCS_LIMIT"):
-        print(f'Limiting number of connected cars to {params.get("CCS_LIMIT")}')
-        connected_cars = objects[:int(params.get("CCS_LIMIT"))]
-    else:
-        connected_cars = objects
+    cc_ids = []
+    if params.get("CCS"):
+        print(f'Limiting set of connected cars to {params.get("CCS")}')
+        cc_ids = params.get("CCS").split(',')
+    
+    connected_cars = []
+    for obj in objects:
+        if not params.get("STEAM_UP") and obj[4] in cc_ids:
+            connected_cars.append(obj)
+        elif not params.get("STEAM_UP"):
+            connected_cars = objects
+
+    print(f"connected cars len: {len(connected_cars)}")
 
     kwargs = []
     res = []
@@ -142,10 +160,11 @@ def run(params=[]):
         return kwargs
 
 #    import pdb;pdb.set_trace()
-    if objects:
+    if params.get("STEAM_UP") or (objects and operation == 'tp') or len(connected_cars) > 1:
       print("before lithops fexec.map")
 
       kwargs = get_chunks(objects, chunk_size)
+#      fexec.map(map_function, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True}, include_modules = ['cd', 'tp'])
       fexec.map(map_function, kwargs, extra_env = {'__LITHOPS_LOCAL_EXECUTION': True})
 
       print("after lithops fexec.map")
@@ -161,7 +180,7 @@ def run(params=[]):
 
     print("results: {}".format(res))
 
-    lock.release()
+#    lock.release()
 
     print("returning from lithops function")
     return {"finished": "true"}
@@ -174,15 +193,16 @@ def run(params=[]):
 @click.option('--redis', default='10.106.33.95', help='Redis host', type=str)
 @click.option('--chunk_size', default=1, help='Size of object chunks, the actual number of chunks will be determined based on object_num / chunk_size', type=int)
 @click.option('--limit', default='-1', help='Limits the number of objects. In case number of actual objects is lower it will duplicate objects up to specified limit', type=int)
-@click.option('--ccs_limit', default=None, help='Hard limit number of connected cars', type=int)
+@click.option('--ccs', default=None, help='Hard limit connected cars', type=str)
 @click.option('--dc_distributed', help='if specified will use DC in distributed approach', is_flag=True)
 @click.option('--dickle', help='If specified set customized_runtime option to True', is_flag=True)
 @click.option('--storageless', help='If specified set storage mode to storageless', is_flag=True)
 @click.option('--runtime', help='Lithops runtime docker image to use')
+@click.option('--steam_up', help='If specified steaming up to the limit', is_flag=True)
 @click.option('--log_level', help='Log level', default='DEBUG')
-def run_wrapper(redis, chunk_size, limit, ccs_limit, dc_distributed, dickle, storageless, operation, runtime, log_level):
-    params={"CHUNK_SIZE": chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS_LIMIT": ccs_limit, 'REDIS_HOST': redis,
-            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime, 'LOG_LEVEL': log_level}
+def run_wrapper(redis, chunk_size, limit, ccs, dc_distributed, dickle, storageless, operation, runtime, steam_up, log_level):
+    params={"CHUNK_SIZE": chunk_size, "LIMIT": limit, "ALIAS" : "DKB", "CCS": ccs, 'REDIS_HOST': redis,
+            'DC_DISTRIBUTED': dc_distributed, 'DICKLE': dickle, 'STORAGELESS': storageless, 'OPERATION': operation, 'RUNTIME': runtime, 'STEAM_UP': steam_up, 'LOG_LEVEL': log_level}
 
     run(params=params)
 

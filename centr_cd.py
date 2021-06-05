@@ -45,7 +45,12 @@ def detect_collision_centralized(objects_chunk, connected_cars):
             client=mqtt.Client()
             client.connect("192.168.7.42")
 
-            client.publish("test",f"{my_id} {ccid} {collisions} {my_object[0]} {my_object[1]} {my_object[2]} {cc[0]} {cc[1]} {cc[2]}")
+            f1 = cc[6]
+            f2 = my_object[6]
+            if f2 > f1:
+                f1 = f2
+
+            client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0],collisions[0][1],collisions[0][2]}")
             print(f"Collision detected, after mqtt={my_id}:{ccid}")
 
             # push to car mqtt topic

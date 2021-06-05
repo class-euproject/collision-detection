@@ -2,7 +2,7 @@
 
 REDIS_HOST=`kubectl -n openwhisk get svc|grep redis|awk '{print $3}'`
 NODES="41 43 44 45"
-RUNTIME_IMAGE_NAME=192.168.7.40:5000/kpavel/lithops_runtime:14.0
+RUNTIME_IMAGE_NAME=192.168.7.40:5000/kpavel/lithops_runtime:42.1
 RUNTIME_NAME=lithops-runtime
 #RUNTIME_NAME=192.168.7.40:5000/kpavel/lithops_runtime:d12352388b6533a0
 PROJECTS_ROOT_DIR="${HOME}"
@@ -66,6 +66,7 @@ cp -r ${PROJECTS_ROOT_DIR}/collision-detection/cfgfiles ${PROJECTS_ROOT_DIR}/lit
 
 echo "Updating runtime docker image with new stubs"
 cd ${PROJECTS_ROOT_DIR}/lithops
+cp -r ~/.lithops .
 docker build -t $RUNTIME_IMAGE_NAME .
 docker push $RUNTIME_IMAGE_NAME
 
@@ -78,9 +79,10 @@ docker push $RUNTIME_IMAGE_NAME
 #kubectl delete deploy upd-dep
 
 echo "Extending lithops runtime"
-lithops runtime create $RUNTIME_NAME --memory 512
-lithops runtime extend $RUNTIME_NAME --memory 512 --filepath /home/class/collision-detection/map_tp.py --function traj_pred_v2_wrapper --image $RUNTIME_IMAGE_NAME
-lithops runtime extend $RUNTIME_NAME --memory 512 --filepath /home/class/collision-detection/centr_cd.py --function detect_collision_centralized --image $RUNTIME_IMAGE_NAME
+lithops runtime create $RUNTIME_NAME --memory 1024
+lithops runtime extend $RUNTIME_NAME --memory 1024 --filepath /home/class/collision-detection/map_tp.py --function traj_pred_v2_wrapper --image $RUNTIME_IMAGE_NAME
+lithops runtime extend $RUNTIME_NAME --memory 1024 --filepath /home/class/collision-detection/centr_cd.py --function detect_collision_centralized --image $RUNTIME_IMAGE_NAME
+
 
 pull_image_on_nodes $RUNTIME_IMAGE_NAME
 
@@ -89,15 +91,9 @@ docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker unpause
 docker ps -a | grep kpavel_lithops|awk '{print $1 }'| xargs -I {} docker rm -f {}
 
 if true; then
-    kubectl -n openwhisk delete pod owdev-invoker-0
-    kubectl -n openwhisk delete pod owdev-invoker-1
-    kubectl -n openwhisk delete pod owdev-invoker-2
-    kubectl -n openwhisk delete pod owdev-invoker-3
-    kubectl -n openwhisk delete pod owdev-controller-0
-    kubectl -n openwhisk delete pod owdev-controller-1
-    kubectl -n openwhisk delete pod owdev-controller-2
-    kubectl -n openwhisk delete pod owdev-controller-3
-    sleep 30
+    kubectl -n openwhisk delete pod owdev-invoker-0 owdev-invoker-1 owdev-invoker-2 owdev-invoker-3
+    kubectl -n openwhisk delete pod owdev-controller-0 owdev-controller-1 owdev-controller-2 owdev-controller-3
+    sleep 60
 fi
 
 #echo -n "Updating runtimes"
@@ -124,8 +120,8 @@ echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 rm classAction.zip
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithops_runner.py cd tp map_tp.py centr_cd.py dist_cd.py
-wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
-wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 512 -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 1024 -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 1024 -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
 
 #wsk -i rule create cdtimerrule cdtimer class/cdAction
 #wsk -i rule create tp-rule tp-trigger class/tpAction

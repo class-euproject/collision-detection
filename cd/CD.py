@@ -32,7 +32,7 @@ warnings.simplefilter('ignore', np.RankWarning)
 # 3 -> intersections_shapely_polygons (with sorrounded area)
 CD_TYPE = 3
 
-COLLISION_THRESHOLD = 2 # max distance in seconds to alert a collision
+COLLISION_THRESHOLD = 1 # max distance in seconds to alert a collision
 SHAPELY_DISTANCE = 0.00001 # distance to get sorrounded area from vehicles for each side (0.00001 = 1.5 meters)
 SHAPELY_ANGLE = 25 # angle to get sorrounded area for pedestrians
 

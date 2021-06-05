@@ -677,4 +677,7 @@ def do_benchmark(iteration, test_name, alias, chunk_size, limit, ccs_limit, dc_d
     logging.info('=================================================================\n\n')
 	
 if __name__ == '__main__':
+    getLogs()
+    if True:
+        import pdb;pdb.set_trace()
     benchmark()

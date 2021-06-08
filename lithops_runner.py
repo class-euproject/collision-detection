@@ -36,6 +36,8 @@ def acquireLock(REDIS_HOST, operation):
 
 def run(params=[]):
     print(f"in run with {params}")
+
+#    start = time.time()
 #    import pdb;pdb.set_trace()
 
     operation = params.get('OPERATION')
@@ -127,19 +129,19 @@ def run(params=[]):
     def chunker(seq, size):
         return (seq[pos:pos + size] for pos in range(0, len(seq), size))
 
-    cc_ids = []
+    cc_classes = []
     if params.get("CCS"):
-        print(f'Limiting set of connected cars to {params.get("CCS")}')
-        cc_ids = params.get("CCS").split(',')
+        print(f'Limiting set of connected cars to classes {params.get("CCS")}')
+        cc_classes = params.get("CCS").split(',')
     
     connected_cars = []
     for obj in objects:
-        if not params.get("STEAM_UP") and obj[4] in cc_ids:
+        if not params.get("STEAM_UP") and obj[5] in cc_classes:
             connected_cars.append(obj)
-        elif not params.get("STEAM_UP"):
+        elif not params.get("STEAM_UP") and not params.get("CCS"):
             connected_cars = objects
 
-    print(f"connected cars len: {len(connected_cars)}")
+    print(f"connected cars: {connected_cars}")
 
     kwargs = []
     res = []
@@ -183,7 +185,8 @@ def run(params=[]):
 #    lock.release()
 
     print("returning from lithops function")
-    return {"finished": "true"}
+
+    return {"finished": "true", "aid": os.environ['__OW_ACTIVATION_ID'], 'objects_len': len(objects), 'connected_cars': len(connected_cars)}
 
 
 

@@ -10,6 +10,7 @@ source ${PROJECTS_ROOT_DIR}/venv/bin/activate
 #RUNTIME_NAME=kpavel/lithops_runtime:13.0
 
 LOG_LEVEL='INFO'
+PASSWORDLESS=true
 
 
 function pull_image_on_nodes() {
@@ -20,14 +21,16 @@ function pull_image_on_nodes() {
     done
 }
 
-echo -n Password: 
-read -s password
-echo
-
 wsk -i rule delete /guest/cdtimerrule
 wsk -i rule delete /guest/tp-rule
 wsk -i action delete class/tpAction
 wsk -i action delete class/cdAction
+
+
+if [ ! PASSWORDLESS ]; then
+echo -n Password:
+read -s password
+echo
 
 echo -n "Updating stubs on 192.168.7.32"
 /usr/bin/expect <<EOD
@@ -50,6 +53,10 @@ send -- "$password\r"
 send -- "\r"
 expect eof
 EOD
+else
+    pkravche@192.168.7.32 "cd /m/home/pkravche/dataclay-class/examples/dataclay-class/dataclay-cloud/;./GetStubs.sh"
+    scp -r pkravche@192.168.7.32:/m/home/pkravche/dataclay-class/examples/dataclay-class/dataclay-cloud/stubs ${PROJECTS_ROOT_DIR}/collision-detection/
+fi
 
 #cp ~/.lithops_config ${PROJECTS_ROOT_DIR}/trajectory-prediction
 cp ~/.lithops_config ${PROJECTS_ROOT_DIR}/collision-detection/

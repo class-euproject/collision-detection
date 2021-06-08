@@ -50,7 +50,7 @@ def detect_collision_centralized(objects_chunk, connected_cars):
             if f2 > f1:
                 f1 = f2
 
-            client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0],collisions[0][1],collisions[0][2]}")
+            client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}")
             print(f"Collision detected, after mqtt={my_id}:{ccid}")
 
             # push to car mqtt topic

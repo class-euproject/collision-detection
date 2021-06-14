@@ -227,6 +227,13 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
         #    fy = sklearn_poly_reg(vct_x, vct_y, vct_xp, reg_deg)
     
     # now the output is 3 arrays for timestamps, x and y positions
+
+    temp_fx = np.array(fx)
+    fx = temp_fx.tolist()
+
+    temp_fy = np.array(fy)
+    fy = temp_fy.tolist()
+
     return fx, fy, ft
 
 def numpy_poly_reg(vx, vy, z, degrees):

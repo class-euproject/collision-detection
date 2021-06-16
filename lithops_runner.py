@@ -5,13 +5,11 @@ import time
 
 import lithops
 
-from cd.CD import collision_detection
-
 from geolib import geohash
 import paho.mqtt.client as mqtt
 
-from cd.dataclayObjectManager import DataclayObjectManager as CD_DOM
-from tp.dataclayObjectManager import DataclayObjectManager as TP_DOM
+#from cd.dataclayObjectManager import DataclayObjectManager as CD_DOM
+#from tp.dataclayObjectManager import DataclayObjectManager as TP_DOM
 import click
 
 print("after imports")
@@ -35,6 +33,7 @@ def acquireLock(REDIS_HOST, operation):
     return None
 
 def run(params=[]):
+  try:
     print(f"in run with {params}")
 
 #    start = time.time()
@@ -42,7 +41,7 @@ def run(params=[]):
 
     operation = params.get('OPERATION')
 
-    lock = acquireLock(params['REDIS_HOST'], operation)
+#    lock = acquireLock(params['REDIS_HOST'], operation)
 #    if not lock:
 #        return {'error': f'There currently maximum number of {CONCURRENCY} simulatiously running {operation} actions'}
 
@@ -96,8 +95,10 @@ def run(params=[]):
       print("creating dm instance")
 
       if operation == 'cd':
+        from cd.dataclayObjectManager import DataclayObjectManager as CD_DOM
         dm = CD_DOM(alias=alias)
       else:
+        from tp.dataclayObjectManager import DataclayObjectManager as TP_DOM
         dm = TP_DOM(alias=alias)
 
     limit = None
@@ -187,6 +188,12 @@ def run(params=[]):
     print("returning from lithops function")
 
     return {"finished": "true", "aid": os.environ['__OW_ACTIVATION_ID'], 'objects_len': len(objects), 'connected_cars': len(connected_cars)}
+  except Exception:
+    import traceback
+    traceback.print_exc()
+
+    return {"finished": "error", "aid": os.environ['__OW_ACTIVATION_ID']}
+
 
 
 

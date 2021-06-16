@@ -26,6 +26,7 @@ def _getConnectedCarsInWA(my_object, connected_cars_objects):
     return res
 
 def detect_collision_centralized(objects_chunk, connected_cars):
+  try:
     res = []
     print(f"PAIRS_NUM:{len(objects_chunk) * len(connected_cars)}")
     for my_object in objects_chunk:
@@ -59,6 +60,13 @@ def detect_collision_centralized(objects_chunk, connected_cars):
             # push to car mqtt topic
             res.append((my_id, ccid, collisions))
     print(f"after for cc in cc_in_wa")
+  except Exception as e:
+    print("Got exception")
+    client=mqtt.Client()
+    client.connect("192.168.7.42")
+    client.publish("test", f"Got an unknown CD exception, raising. AID: {os.environ['__OW_ACTIVATION_ID']}")
+    raise e
+
 
 def getLimitedNumberOfObjects(objects, limit):
     while len(objects) < limit:

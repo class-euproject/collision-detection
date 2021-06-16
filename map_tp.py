@@ -3,7 +3,7 @@ print("before imports")
 import time
 import os
 
-from tp.dataclayObjectManager import DataclayObjectManager 
+#from tp.dataclayObjectManager import DataclayObjectManager 
 from tp.v3TP_new import traj_pred_v3
 
 
@@ -17,11 +17,13 @@ dm = None
 
 
 def traj_pred_v2_wrapper(objects_chunk):
+  try:
     print(" = ==================in new_traj_pred_v2_wrapper!!! ===============")
     print(f"with input: {objects_chunk}")
     global dm
     if not dm:
       print(f"creating DATAMANAGER INSTANce")
+      from tp.dataclayObjectManager import DataclayObjectManager
       dm = DataclayObjectManager()
     print(f"objects in chunk: {len(objects_chunk)}")
     print(objects_chunk)
@@ -70,6 +72,13 @@ def traj_pred_v2_wrapper(objects_chunk):
         print(f"after dm.storeResult:{objectTuple[0]}")
 
     print(" = ==================out traj_pred_v2_wrapper ===============")
+  except Exception as e:
+    print("Got exception")
+    client=mqtt.Client()
+    client.connect("192.168.7.42")
+    client.publish("test", f"Got an unknown exception in TP, raising. AID: {os.environ['__OW_ACTIVATION_ID']}")
+    raise e
+
 
 def traj_pred_v2_distr(objects_chunk):
     print(" = ==================in traj_pred_v2_distr ===============")

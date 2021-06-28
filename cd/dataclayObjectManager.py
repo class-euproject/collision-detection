@@ -28,9 +28,9 @@ class DataclayObjectManager:
         self.backend_id = get_backend_id_by_name("DS1")
 
     def get_dummy_objects(self):
-        return [([35.03100107347143, 35.03101945302576, 35.03104596715896, 35.03108061587101, 35.03112339916193], [-78.93056656648699, -78.93057797939056, -78.93059476964628, -78.93061693725413, -78.93064448221412], [1622024043464, 1622024044464, 1622024045464, 1622024046464, 1622024047464], 'dnpz7ch', '2405_11', 'car')]
+        return [([35.03100107347143, 35.03101945302576, 35.03104596715896, 35.03108061587101, 35.03112339916193], [-78.93056656648699, -78.93057797939056, -78.93059476964628, -78.93061693725413, -78.93064448221412], [1622024043464, 1622024044464, 1622024045464, 1622024046464, 1622024047464], 'dnpz7ch', '2405_11', 'car', 309)]
 
-    def getAllObjects(self, with_tp=True, connected=False, with_event_history=False):
+    def getAllObjects(self, with_tp=True, connected=None, with_event_history=False):
         return self.objectsDKB.get_objects([], False, with_tp, connected)
 
     def getAllObjectsIDs(self):

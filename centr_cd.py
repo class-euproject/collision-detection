@@ -1,6 +1,7 @@
 print("before imports")
 
 import time
+import os
 
 from cd.CD import collision_detection
 
@@ -24,6 +25,48 @@ def _getConnectedCarsInWA(my_object, connected_cars_objects):
         if my_object[4] != cc[4] and (my_object[3] == cc[3] or my_object[3] in geohash.neighbours(cc[3])):
             res.append(cc)
     return res
+
+def new_detect_collision_centralized(pairs_chunk, object_map):
+  try:
+    res = []
+    print(f"PAIRS_NUM:{len(pairs_chunk)}")
+    for my_pair in pairs_chunk:
+        print(f"in detect_collision_centralized with {my_pair}")
+        my_object = object_map[my_pair[0]]
+        cc = object_map[my_pair[1]]
+
+        start = time.time()
+        collisions = _is_collided(my_object, cc)
+        # testReport = my_object[4] == '2407_358' and cc[4] == '2407_379'
+        # if collisions or testReport:
+        if collisions:
+            my_id = my_object[4]
+            ccid = cc[4]
+
+            print(f"Collision detected, before mqtt={my_id}:{ccid}")
+            time_detected = time.time()
+            client=mqtt.Client()
+            client.connect("192.168.7.42")
+
+            f1 = cc[6]
+            f2 = my_object[6]
+            if f2 > f1:
+                f1 = f2
+
+            client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}", qos=2)
+            client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}")
+
+            print(f"Collision detected, after mqtt={my_id}:{ccid}")
+
+            # push to car mqtt topic
+            res.append((my_id, ccid, collisions))
+    print(f"after for my_pair")
+  except Exception as e:
+    print("Got a new exception")
+    client=mqtt.Client()
+    client.connect("192.168.7.42")
+    client.publish("test", f"Got an unknown CD exception, raising. AID: {os.environ['__OW_ACTIVATION_ID']}")
+    raise e
 
 def detect_collision_centralized(objects_chunk, connected_cars):
   try:

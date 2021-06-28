@@ -4,6 +4,7 @@ REDIS_HOST=`kubectl -n openwhisk get svc|grep redis|awk '{print $3}'`
 NODES="41 43 44 45"
 RUNTIME_IMAGE_NAME=192.168.7.40:5000/kpavel/lithops_runtime:42.1
 RUNTIME_NAME=lithops-runtime
+MEMORY=512
 
 tput setaf 2
 echo "======================================="
@@ -50,8 +51,8 @@ tput setaf 7
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 rm classAction.zip
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithops_runner.py cd tp map_tp.py centr_cd.py dist_cd.py
-wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 1024 -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
-wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 1024 -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory $MEMORY -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory $MEMORY -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
 
 tput setaf 2
 echo '=================================================================================='

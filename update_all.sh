@@ -12,6 +12,8 @@ source ${PROJECTS_ROOT_DIR}/venv/bin/activate
 LOG_LEVEL='INFO'
 PASSWORDLESS=true
 
+MEMORY=1024
+
 
 function pull_image_on_nodes() {
     image_name=$1
@@ -86,9 +88,9 @@ docker push $RUNTIME_IMAGE_NAME
 #kubectl delete deploy upd-dep
 
 echo "Extending lithops runtime"
-lithops runtime create $RUNTIME_NAME --memory 1024
-lithops runtime extend $RUNTIME_NAME --memory 1024 --filepath /home/class/collision-detection/map_tp.py --function traj_pred_v2_wrapper --image $RUNTIME_IMAGE_NAME
-lithops runtime extend $RUNTIME_NAME --memory 1024 --filepath /home/class/collision-detection/centr_cd.py --function detect_collision_centralized --image $RUNTIME_IMAGE_NAME
+lithops runtime create $RUNTIME_NAME --memory $MEMORY 
+lithops runtime extend $RUNTIME_NAME --memory $MEMORY --filepath /home/class/collision-detection/map_tp.py --function traj_pred_v2_wrapper --image $RUNTIME_IMAGE_NAME
+lithops runtime extend $RUNTIME_NAME --memory $MEMORY --filepath /home/class/collision-detection/centr_cd.py --function detect_collision_centralized --image $RUNTIME_IMAGE_NAME
 
 
 pull_image_on_nodes $RUNTIME_IMAGE_NAME
@@ -127,8 +129,8 @@ echo -n "Update collision detection OW action"
 cd ${PROJECTS_ROOT_DIR}/collision-detection
 rm classAction.zip
 zip -r classAction.zip __main__.py .lithops_config cfgfiles/ stubs/ lithops_runner.py cd tp map_tp.py centr_cd.py dist_cd.py
-wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 1024 -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
-wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory 1024 -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/cdAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory $MEMORY -p OPERATION cd -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
+wsk -i action update class/tpAction --docker $RUNTIME_IMAGE_NAME --timeout 300000  -p ALIAS DKB -p CHUNK_SIZE 3 -p STORAGELESS True -p DICKLE True -p REDIS_HOST ${REDIS_HOST} --memory $MEMORY -p OPERATION tp -p RUNTIME ${RUNTIME_NAME} -p LOG_LEVEL $LOG_LEVEL classAction.zip
 
 #wsk -i rule create cdtimerrule cdtimer class/cdAction
 #wsk -i rule create tp-rule tp-trigger class/tpAction

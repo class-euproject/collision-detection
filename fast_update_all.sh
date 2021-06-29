@@ -4,7 +4,7 @@ REDIS_HOST=`kubectl -n openwhisk get svc|grep redis|awk '{print $3}'`
 NODES="41 43 44 45"
 RUNTIME_IMAGE_NAME=192.168.7.40:5000/kpavel/lithops_runtime:42.1
 RUNTIME_NAME=lithops-runtime
-MEMORY=512
+MEMORY=1024
 
 tput setaf 2
 echo "======================================="

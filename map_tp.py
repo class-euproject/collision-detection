@@ -34,6 +34,8 @@ def traj_pred_v2_wrapper(objects_chunk):
         time.sleep(0.3)
         return
 
+    tps_results = []
+    
     for objectTuple in objects_chunk:
         print(f"before dm.getObject: {objectTuple[0]}")
 
@@ -46,8 +48,7 @@ def traj_pred_v2_wrapper(objects_chunk):
         tp_timestamp = objectTuple[5][2][-1]
 
         try:
-            obj = dm.getObject(objectTuple[0])
-            dm.storeResult(obj, fx, fy, ft, tp_timestamp, objectTuple[7])
+            tps_results.append((objectTuple[0], fx, fy, ft, tp_timestamp, objectTuple[7]))
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -71,6 +72,8 @@ def traj_pred_v2_wrapper(objects_chunk):
 
         print(f"after dm.storeResult:{objectTuple[0]}")
 
+    print(f"storing results: {tps_results}")
+    dm.storeBulkResult(tps_results)
     print(" = ==================out traj_pred_v2_wrapper ===============")
   except Exception as e:
     print("Got exception")

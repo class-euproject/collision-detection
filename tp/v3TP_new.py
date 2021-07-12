@@ -200,8 +200,9 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
     if ((all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)) or static):
-        fx = [dqx[-1]] * reg_offset
-        fy = [dqy[-1]] * reg_offset
+        print('The object is really static')
+        fx = [0] * reg_offset
+        fy = [0] * reg_offset
 
     # if not, calculate x' and y'
     else:

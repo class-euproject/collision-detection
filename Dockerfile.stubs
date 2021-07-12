@@ -1,5 +1,5 @@
 # Based on: https://github.com/ibm-functions/runtime-python/tree/master/python3.7
-FROM 192.168.7.40:5000/kpavel/lithops_runtime:42.1
+FROM 192.168.7.40:5000/kpavel/lithops_runtime:42.3
 
 COPY stubs action/stubs
 

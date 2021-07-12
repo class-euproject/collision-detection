@@ -2,7 +2,7 @@
 
 REDIS_HOST=`kubectl -n openwhisk get svc|grep redis|awk '{print $3}'`
 NODES="41 43 44 45"
-RUNTIME_IMAGE_NAME=192.168.7.40:5000/kpavel/lithops_runtime:42.1
+RUNTIME_IMAGE_NAME=192.168.7.40:5000/kpavel/lithops_runtime:42.3
 RUNTIME_NAME=lithops-runtime
 #RUNTIME_NAME=192.168.7.40:5000/kpavel/lithops_runtime:d12352388b6533a0
 PROJECTS_ROOT_DIR="${HOME}"
@@ -12,7 +12,7 @@ source ${PROJECTS_ROOT_DIR}/venv/bin/activate
 LOG_LEVEL='INFO'
 PASSWORDLESS=true
 
-MEMORY=1024
+MEMORY=512
 
 
 function pull_image_on_nodes() {
@@ -78,6 +78,9 @@ cd ${PROJECTS_ROOT_DIR}/lithops
 cp -r ~/.lithops .
 docker build -t $RUNTIME_IMAGE_NAME .
 docker push $RUNTIME_IMAGE_NAME
+
+echo "Waitin"
+sleep 10
 
 #echo "Forcing docker image update in the cluster"
 #cd ${PROJECTS_ROOT_DIR}/trajectory-prediction

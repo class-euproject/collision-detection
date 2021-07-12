@@ -18,17 +18,12 @@ dm = None
 
 def traj_pred_v2_wrapper(objects_chunk):
   try:
-    print(" = ==================in new_traj_pred_v2_wrapper!!! ===============")
-    print(f"with input: {objects_chunk}")
-    global dm
-    if not dm:
-      print(f"creating DATAMANAGER INSTANce")
-      from tp.dataclayObjectManager import DataclayObjectManager
-      dm = DataclayObjectManager()
+    print(" = ==================in new_traj_pred_v2_wrapper!!!!! ===============")
+#    print(f"with input: {objects_chunk}")
     print(f"objects in chunk: {len(objects_chunk)}")
-    print(objects_chunk)
-    print(objects_chunk[0])
-    print('---')
+#    print(objects_chunk)
+#    print(objects_chunk[0])
+#    print('---')
     if isinstance(objects_chunk[0], int):
         print("steam up, return")
         time.sleep(0.3)
@@ -37,18 +32,16 @@ def traj_pred_v2_wrapper(objects_chunk):
     tps_results = []
     
     for objectTuple in objects_chunk:
-        print(f"before dm.getObject: {objectTuple[0]}")
-
         # calculate trajectory by v2
         print(f"before traj_pred_v3:{objectTuple[0]}")
         fx, fy, ft = traj_pred_v3(objectTuple[5][0], objectTuple[5][1], objectTuple[5][2], objectTuple[8], objectTuple[9], objectTuple[6].split('_')[0])
 
-        print(f"v_id: {objectTuple[0]} x: {fx} y: {fy} t: {ft}")
+#        print(f"v_id: {objectTuple[0]} x: {fx} y: {fy} t: {ft}")
 
         tp_timestamp = objectTuple[5][2][-1]
 
         try:
-            tps_results.append((objectTuple[0], fx, fy, ft, tp_timestamp, objectTuple[7]))
+            tps_results.append((objectTuple[6], fx, fy, ft, tp_timestamp, objectTuple[7]))
         except Exception as e:
             import traceback
             traceback.print_exc()
@@ -70,9 +63,15 @@ def traj_pred_v2_wrapper(objects_chunk):
             print("----------------------------")
 
 
-        print(f"after dm.storeResult:{objectTuple[0]}")
+    print(f"storing resultsiss: {tps_results}")
+    print(f"storing results: {len(tps_results)}")
 
-    print(f"storing results: {tps_results}")
+    global dm
+    if not dm:
+      print(f"creating datamanager instance")
+      from tp.dataclayObjectManager import DataclayObjectManager
+      dm = DataclayObjectManager()
+
     dm.storeBulkResult(tps_results)
     print(" = ==================out traj_pred_v2_wrapper ===============")
   except Exception as e:

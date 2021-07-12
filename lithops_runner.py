@@ -1,5 +1,3 @@
-print("before imports")
-
 import os 
 import time
 
@@ -15,9 +13,6 @@ import click
 from geolib import geohash
 
 
-
-print("after imports")
-
 dm = None
 
 def getLimitedNumberOfObjects(objects, limit):
@@ -26,7 +21,6 @@ def getLimitedNumberOfObjects(objects, limit):
 
     if type(objects[0]) is tuple:
       for i in range(limit):
-#        import pdb;pdb.set_trace()
         objects[i] = [*objects[i]]
         objects[i][4] = f'{objects[i][4].split("_")[0]}_{i}'
     return objects[:limit]
@@ -43,7 +37,7 @@ def acquireLock(REDIS_HOST, operation):
 
 def run(params=[]):
   try:
-    print(f"in run with {params}")
+    print(f"in run with: {params}")
 
 #    start = time.time()
 #    import pdb;pdb.set_trace()
@@ -100,6 +94,8 @@ def run(params=[]):
 
     global dm
 
+    print('dataclay start')
+
     if not dm:
       print("creating dm instance")
 
@@ -110,6 +106,14 @@ def run(params=[]):
         from tp.dataclayObjectManager import DataclayObjectManager as TP_DOM
         dm = TP_DOM(alias=alias)
 
+
+    if params.get("STEAM_UP"):
+        objects = dm.get_dummy_objects()
+    else:
+        objects = dm.getAllObjects()
+
+    print("dataclay end")
+
     limit = None
     if 'LIMIT' in params and params['LIMIT'] != None: 
         limit = int(params['LIMIT'])
@@ -117,19 +121,6 @@ def run(params=[]):
     chunk_size = 1
     if 'CHUNK_SIZE' in params and params['CHUNK_SIZE'] != None:
         chunk_size =  int(params['CHUNK_SIZE'])
-
-    
-#    import pdb;pdb.set_trace()
-#    if params.get("DC_DISTRIBUTED"):
-#        objects = dm.getAllObjectsIDs()
-#    el
-    if params.get("STEAM_UP"):
-#        objects = getLimitedNumberOfObjects([], int(s_up))
-        objects = dm.get_dummy_objects()
-    else:
-        objects = dm.getAllObjects()
-
-    print("after dm.getAllObjects")
 
     if objects and limit:
         objects = getLimitedNumberOfObjects(objects, limit)
@@ -210,12 +201,11 @@ def run(params=[]):
         connected_cars = objects
     else:
         for obj in objects:
-#            print(f'{obj[5]} {obj[4]} {obj[6]}')
             if obj[5] in cc_classes:
                 connected_cars.append(obj)
 
 #    import pdb;pdb.set_trace()
-    print(f"connected cars: {connected_cars}")
+    print(f"connected cars number: {len(connected_cars)}")
 
     kwargs = []
     res = []
@@ -247,7 +237,6 @@ def run(params=[]):
       print("after lithops fexec.map")
       if objects:
         fexec.wait(download_results=False, WAIT_DUR_SEC=0.015)
-#        res = fexec.get_result(WAIT_DUR_SEC=0.015)
 
     print("lithops finished")
     client=mqtt.Client()

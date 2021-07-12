@@ -14,9 +14,9 @@ print("after imports")
 def _is_collided(main_object, other_object):
     res = []
     if main_object[0] and main_object[1] and main_object[2] and other_object[0] and other_object[1] and other_object[2] and min(main_object[0])>-180 and max(main_object[0])<180 and min(other_object[0])>-180 and max(other_object[0])<180 and min(main_object[1])>-90 and min(other_object[1])>-90 and max(main_object[0])<90 and max(other_object[1])<90 and (max(main_object[0])-min(main_object[0]))<2 and (max(main_object[1])-min(main_object[1]))<2 and (max(other_object[0])-min(other_object[0]))<2 and (max(other_object[1])-min(other_object[1]))<2:
-        print(f"before call collision_detection={main_object[4]}:{other_object[4]}")
+#        print(f"before call collision_detection={main_object[4]}:{other_object[4]}")
         res = collision_detection(main_object, other_object)
-        print(f"after call collision_detection={main_object[4]}:{other_object[4]}")
+#        print(f"after call collision_detection={main_object[4]}:{other_object[4]}")
     return res
 
 def _getConnectedCarsInWA(my_object, connected_cars_objects):
@@ -31,7 +31,7 @@ def new_detect_collision_centralized(pairs_chunk, object_map):
     res = []
     print(f"PAIRS_NUM:{len(pairs_chunk)}")
     for my_pair in pairs_chunk:
-        print(f"in detect_collision_centralized with {my_pair}")
+#        print(f"in detect_collision_centralized with {my_pair}")
         my_object = object_map[my_pair[0]]
         cc = object_map[my_pair[1]]
 
@@ -55,6 +55,7 @@ def new_detect_collision_centralized(pairs_chunk, object_map):
 
             client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}", qos=2)
             client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}")
+            client.publish("error", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]} [{my_object[0]}<==>{cc[0]}]")
 
             print(f"Collision detected, after mqtt={my_id}:{ccid}")
 
@@ -73,7 +74,7 @@ def detect_collision_centralized(objects_chunk, connected_cars):
     res = []
     print(f"PAIRS_NUM:{len(objects_chunk) * len(connected_cars)}")
     for my_object in objects_chunk:
-      print(f"in detect_collision_centralized with {my_object}")
+#      print(f"in detect_collision_centralized with {my_object}")
       cc_in_wa = _getConnectedCarsInWA(my_object, connected_cars)
 
       for cc in cc_in_wa:
@@ -97,6 +98,7 @@ def detect_collision_centralized(objects_chunk, connected_cars):
 
             client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}", qos=2)
             client.publish("test", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]}")
+            client.publish("error", f"{f1} {my_id},{ccid} {collisions[0][0]},{collisions[0][1]},{collisions[0][2]} [{my_object[0]}<==>{cc[0]}]")
 
             print(f"Collision detected, after mqtt={my_id}:{ccid}")
 

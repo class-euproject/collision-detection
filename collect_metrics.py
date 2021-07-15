@@ -266,8 +266,7 @@ def benchmark(filename, output_folder):
 
     print("\n\n=================================================")
     print(f"\033[92mResults:\n{driver_output_file}")
-    if activationsData:
-        print(f'{workers_output_file}')
+    print(f'{workers_output_file}')
     print("\033[0m=================================================")
 
 

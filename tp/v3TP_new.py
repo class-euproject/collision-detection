@@ -140,7 +140,6 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
                  reg_offset=QUAD_REG_OFFSET,
                  range_mil=PRED_RANGE_MIL
                  ):
-    threshold_mov=0.5
     reg_method = 'numpy'
     reg_deg = 1
     static = False
@@ -151,13 +150,20 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
         source_id = '0'
     
     #InvProjMat = IMAT_DICT[source_id]
-     
+
     #print(InvProjMat)
     if (source_id == '2405'):
         adfGeoTransform = np.array(GEO_OWEN)
     else:
         adfGeoTransform = np.array(GEO_MOD)
     
+
+    if (source_id == '20939'):
+        threshold_mov=0.1
+    else:
+        threshold_mov=0.5
+
+
     #
     # 1. find fx
     #
@@ -196,11 +202,10 @@ def traj_pred_v3(dqx, dqy, dqt, w, h,source_id,
     # check if static object based on boxes sizes
     if (source_id != '0'):
         static = is_object_static (dqx[-1],dqy[-1],w,h,threshold_mov,dqx,dqy,InvProjMat, adfGeoTransform)
-    
+
     # if all 'x' and 'y' values are the same, the object is stopped
     # return same value for predictions
     if ((all(dqx_elem == dqx[0] for dqx_elem in dqx)) and (all(dqy_elem == dqy[0] for dqy_elem in dqy)) or static):
-        print('The object is really static')
         fx = [0] * reg_offset
         fy = [0] * reg_offset
 
@@ -410,3 +415,4 @@ def is_object_static (traj_x, traj_y,w,h,thr_box,dqx,dqy,InvProjMat, adfGeoTrans
     # print(" ")
                 
     return ((x1<=pixel_maxlat[0]<=x2) and (x1<=pixel_maxlon[0]<=x2) and (x1<=pixel_minlat[0]<=x2) and (x1<=pixel_minlon[0]<=x2) and (y1<=pixel_maxlat[1]<=y2) and (y1<=pixel_maxlon[1]<=y2) and (y1<=pixel_minlat[1]<=y2) and (y1<=pixel_minlon[1]<=y2))
+    
